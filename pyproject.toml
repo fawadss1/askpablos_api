@@ -44,6 +44,13 @@ dependencies = [
     "requests>=2.25.0"
 ]
 
+[project.urls]
+"Homepage" = "https://github.com/fawadss1/askpablos_api"
+"Documentation" = "https://askpablos-api.readthedocs.io/en/latest/"
+"Repository" = "https://github.com/fawadss1/askpablos_api"
+"Issues" = "https://github.com/fawadss1/askpablos_api/issues"
+"PyPI" = "https://pypi.org/project/askpablos-api/"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=6.0",
@@ -58,12 +65,6 @@ docs = [
     "sphinx-rtd-theme>=1.0",
     "myst-parser>=0.15"
 ]
-
-[project.urls]
-"Homepage" = "https://github.com/fawadss1/askpablos-api"
-"Documentation" = "https://askpablos-api.readthedocs.io"
-"Repository" = "https://github.com/fawadss1/askpablos-api"
-"Bug Tracker" = "https://github.com/fawadss1/askpablos-api/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]

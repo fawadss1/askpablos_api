@@ -12,7 +12,7 @@ need to specify it when creating client instances.
 DEFAULT_API_URL = "http://10.10.10.178:7500/api/proxy/"
 
 # Default request settings - matching your example
-DEFAULT_TIMEOUT = 30
+DEFAULT_TIMEOUT = 45
 DEFAULT_ROTATE_PROXY = True
 DEFAULT_BROWSER = False
 
