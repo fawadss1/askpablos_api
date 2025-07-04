@@ -11,9 +11,10 @@ Exception Hierarchy
    AskPablosError (base)
    ├── AuthenticationError
    ├── APIConnectionError
-   └── ResponseError
+   ├── ResponseError
+   └── ValueError (parameter validation)
 
-All exceptions inherit from ``AskPablosError``, allowing you to catch all API-related errors with a single exception handler if needed.
+All exceptions inherit from ``AskPablosError``, allowing you to catch all API-related errors with a single exception handler if needed. Parameter validation errors use Python's built-in ``ValueError``.
 
 Exception Types
 ---------------
@@ -97,13 +98,68 @@ Raised when the API returns an HTTP error response.
        print(f"HTTP error: {e}")
        # Handle: log error, try alternative URL, etc.
 
+ValueError (Parameter Validation)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Raised when invalid parameter combinations are provided, particularly for browser-specific features.
+
+**Common causes:**
+- Using browser-specific options without enabling browser mode
+- Invalid parameter combinations
+- Incorrect parameter types
+
+.. code-block:: python
+
+   try:
+       # This will raise ValueError - browser features require browser=True
+       response = client.get(
+           url="https://example.com",
+           browser=False,      # Browser disabled
+           screenshot=True,    # But screenshot requested
+           wait_for_load=True  # And page load waiting requested
+       )
+   except ValueError as e:
+       print(f"Parameter validation error: {e}")
+       # Output: browser=True is required for these actions: screenshot=True, wait_for_load=True
+
+Browser Parameter Validation
+----------------------------
+
+The client validates that browser-specific features are only used when browser mode is enabled:
+
+**Validated Parameters:**
+- ``wait_for_load=True`` requires ``browser=True``
+- ``screenshot=True`` requires ``browser=True``
+- ``js_strategy`` (non-DEFAULT values) requires ``browser=True``
+
+.. code-block:: python
+
+   # Valid usage - browser features with browser enabled
+   response = client.get(
+       url="https://example.com",
+       browser=True,          # Browser enabled
+       screenshot=True,       # Valid with browser=True
+       wait_for_load=True,    # Valid with browser=True
+       js_strategy="DEFAULT"  # Valid with browser=True
+   )
+
+   # Invalid usage - will raise ValueError
+   try:
+       response = client.get(
+           url="https://example.com",
+           browser=False,         # Browser disabled
+           js_strategy=True       # But JS strategy specified
+       )
+   except ValueError as e:
+       print(f"Error: {e}")
+
 Best Practices
 --------------
 
-Specific Exception Handling
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Comprehensive Error Handling
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Handle specific exceptions for different recovery strategies:
+Always handle specific exceptions for better error management:
 
 .. code-block:: python
 
@@ -113,431 +169,237 @@ Handle specific exceptions for different recovery strategies:
        APIConnectionError,
        ResponseError
    )
-   import time
-   import logging
 
-   logger = logging.getLogger(__name__)
-
-   def robust_request(url, max_retries=3, backoff_factor=1.0):
-       """Make a request with comprehensive error handling and retry logic."""
-
-       # Initialize client (this may raise AuthenticationError)
+   def safe_request(url, **kwargs):
+       """Make a request with comprehensive error handling."""
        try:
            client = AskPablos(
                api_key="your_api_key",
                secret_key="your_secret_key"
            )
-       except AuthenticationError as e:
-           logger.error(f"Invalid credentials: {e}")
-           raise  # Re-raise as this is not recoverable
 
-       # Attempt request with retries for recoverable errors
+           response = client.get(url, **kwargs)
+           return response
+
+       except ValueError as e:
+           print(f"Parameter error: {e}")
+           return None
+       except AuthenticationError as e:
+           print(f"Authentication failed: {e}")
+           return None
+       except APIConnectionError as e:
+           print(f"Connection error: {e}")
+           return None
+       except ResponseError as e:
+           print(f"HTTP error: {e}")
+           return None
+       except Exception as e:
+           print(f"Unexpected error: {e}")
+           return None
+
+Retry Logic
+~~~~~~~~~~~
+
+Implement retry logic for transient errors:
+
+.. code-block:: python
+
+   import time
+   from askpablos_api import APIConnectionError, ResponseError
+
+   def request_with_retry(url, max_retries=3, **kwargs):
+       """Request with exponential backoff retry logic."""
        for attempt in range(max_retries):
            try:
-               response = client.get(url, timeout=30)
-               logger.info(f"Successfully fetched {url}")
+               response = client.get(url, **kwargs)
                return response
 
            except APIConnectionError as e:
-               # Retry on connection errors with exponential backoff
-               if attempt < max_retries - 1:
-                   delay = backoff_factor * (2 ** attempt)
-                   logger.warning(f"Connection failed (attempt {attempt + 1}), retrying in {delay}s: {e}")
-                   time.sleep(delay)
-               else:
-                   logger.error(f"Connection failed after {max_retries} attempts: {e}")
+               if attempt == max_retries - 1:
                    raise
+               wait_time = 2 ** attempt  # Exponential backoff
+               print(f"Connection failed, retrying in {wait_time}s... ({attempt + 1}/{max_retries})")
+               time.sleep(wait_time)
 
            except ResponseError as e:
-               # Don't retry on client errors (4xx), but retry on server errors (5xx)
-               response_code = getattr(e, 'status_code', None)
-               if response_code and 500 <= response_code < 600 and attempt < max_retries - 1:
-                   delay = backoff_factor * (2 ** attempt)
-                   logger.warning(f"Server error {response_code} (attempt {attempt + 1}), retrying in {delay}s")
-                   time.sleep(delay)
-               else:
-                   logger.error(f"HTTP error (not retrying): {e}")
+               # Don't retry client errors (4xx), only server errors (5xx)
+               if hasattr(e, 'status_code') and 400 <= e.status_code < 500:
                    raise
+               if attempt == max_retries - 1:
+                   raise
+               wait_time = 2 ** attempt
+               print(f"Server error, retrying in {wait_time}s... ({attempt + 1}/{max_retries})")
+               time.sleep(wait_time)
 
-   # Usage
-   try:
-       response = robust_request("https://example.com")
-       print(f"Success: {response.status_code}")
-   except AuthenticationError:
-       print("Please check your API credentials")
-   except (APIConnectionError, ResponseError) as e:
-       print(f"Request failed: {e}")
-
-Context Manager Pattern
-~~~~~~~~~~~~~~~~~~~~~~
-
-Use context managers for resource cleanup:
-
-.. code-block:: python
-
-   from contextlib import contextmanager
-   from askpablos_api import AskPablos, AskPablosError
-   import logging
-
-   logger = logging.getLogger(__name__)
-
-   @contextmanager
-   def api_client(api_key, secret_key):
-       """Context manager for AskPablos client with automatic error logging."""
-       client = None
-       try:
-           client = AskPablos(api_key=api_key, secret_key=secret_key)
-           yield client
-       except AskPablosError as e:
-           logger.error(f"API client error: {e}")
-           raise
-       finally:
-           # Cleanup if needed
-           if client:
-               logger.info("Client session completed")
-
-   # Usage
-   try:
-       with api_client("api_key", "secret_key") as client:
-           response = client.get("https://example.com")
-           print(response.content)
-   except AskPablosError:
-       print("API operation failed")
-
-Custom Error Handling
+Logging for Debugging
 ~~~~~~~~~~~~~~~~~~~~~
 
-Create custom error handlers for your application:
+Enable logging to help with debugging:
 
 .. code-block:: python
 
-   import logging
-
-   class APIErrorHandler:
-       """Custom error handler with application-specific logic."""
-
-       def __init__(self, notify_admin=False, log_file=None):
-           self.notify_admin = notify_admin
-           self.logger = logging.getLogger(__name__)
-
-           if log_file:
-               handler = logging.FileHandler(log_file)
-               formatter = logging.Formatter(
-                   '%(asctime)s - %(levelname)s - %(message)s'
-               )
-               handler.setFormatter(formatter)
-               self.logger.addHandler(handler)
-
-       def handle_error(self, error, context=None):
-           """Handle different types of API errors."""
-           from askpablos_api import AuthenticationError, APIConnectionError, ResponseError
-
-           context = context or {}
-
-           if isinstance(error, AuthenticationError):
-               self.logger.critical(f"Authentication failed: {error}")
-               if self.notify_admin:
-                   self._notify_admin("Authentication Error", str(error))
-               return "CREDENTIALS_INVALID"
-
-           elif isinstance(error, APIConnectionError):
-               self.logger.error(f"Connection error: {error}")
-               return "CONNECTION_FAILED"
-
-           elif isinstance(error, ResponseError):
-               self.logger.warning(f"Response error: {error}")
-               return "REQUEST_FAILED"
-
-           else:
-               self.logger.error(f"Unexpected error: {error}")
-               return "UNKNOWN_ERROR"
-
-       def _notify_admin(self, subject, message):
-           """Send notification to admin (implement based on your needs)."""
-           print(f"ADMIN ALERT - {subject}: {message}")
-
-   # Usage
-   from askpablos_api import AskPablos, AskPablosError
-
-   error_handler = APIErrorHandler(notify_admin=True, log_file="api_errors.log")
-
-   try:
-       client = AskPablos(api_key="key", secret_key="secret")
-       response = client.get("https://example.com")
-   except AskPablosError as e:
-       error_code = error_handler.handle_error(e, {"url": "https://example.com"})
-       print(f"Error handled with code: {error_code}")
-
-Logging and Monitoring
-----------------------
-
-Error Logging Setup
-~~~~~~~~~~~~~~~~~~~
-
-Set up comprehensive logging for error tracking:
-
-.. code-block:: python
-
-   import logging
-   import sys
    from askpablos_api import configure_logging
 
-   def setup_error_logging():
-       """Configure logging for error tracking and debugging."""
-
-       # Configure library logging
-       configure_logging(level="INFO")
-
-       # Create application logger
-       logger = logging.getLogger("app")
-       logger.setLevel(logging.INFO)
-
-       # Console handler for immediate feedback
-       console_handler = logging.StreamHandler(sys.stdout)
-       console_formatter = logging.Formatter(
-           '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-       )
-       console_handler.setFormatter(console_formatter)
-
-       # File handler for persistent logs
-       file_handler = logging.FileHandler("app_errors.log")
-       file_formatter = logging.Formatter(
-           '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
-       )
-       file_handler.setFormatter(file_formatter)
-
-       # Add handlers
-       logger.addHandler(console_handler)
-       logger.addHandler(file_handler)
-
-       return logger
-
-   # Usage
-   from askpablos_api import AskPablos, AuthenticationError, APIConnectionError
-
-   logger = setup_error_logging()
+   # Enable debug logging
+   configure_logging(level="DEBUG")
 
    try:
-       client = AskPablos(api_key="key", secret_key="secret")
-       response = client.get("https://example.com")
-       logger.info(f"Request successful: {response.status_code}")
-   except AuthenticationError as e:
-       logger.error(f"Authentication failed: {e}", exc_info=True)
-   except APIConnectionError as e:
-       logger.warning(f"Connection issue: {e}", exc_info=True)
+       response = client.get(
+           url="https://example.com",
+           browser=True,
+           timeout=30
+       )
    except Exception as e:
-       logger.critical(f"Unexpected error: {e}", exc_info=True)
+       print(f"Request failed: {e}")
+       # Check logs for detailed error information
 
-Health Checks
-~~~~~~~~~~~~~
-
-Implement health checks to monitor API availability:
-
-.. code-block:: python
-
-   import time
-   from askpablos_api import AskPablos, AskPablosError
-
-   class APIHealthChecker:
-       """Monitor API health and availability."""
-
-       def __init__(self, api_key, secret_key, check_interval=60):
-           self.client = AskPablos(api_key=api_key, secret_key=secret_key)
-           self.check_interval = check_interval
-           self.last_check = 0
-           self.is_healthy = None
-
-       def check_health(self):
-           """Perform a health check against the API."""
-           try:
-               # Use a lightweight endpoint for health checks
-               response = self.client.get("https://httpbin.org/status/200", timeout=10)
-
-               if response.status_code == 200:
-                   self.is_healthy = True
-                   return {"status": "healthy", "response_time": response.elapsed}
-               else:
-                   self.is_healthy = False
-                   return {"status": "unhealthy", "status_code": response.status_code}
-
-           except AskPablosError as e:
-               self.is_healthy = False
-               return {"status": "error", "error": str(e)}
-
-       def ensure_healthy(self):
-           """Ensure API is healthy, check if needed."""
-           from askpablos_api import APIConnectionError
-
-           now = time.time()
-
-           if now - self.last_check > self.check_interval:
-               result = self.check_health()
-               self.last_check = now
-
-               if not self.is_healthy:
-                   raise APIConnectionError(f"API health check failed: {result}")
-
-           elif self.is_healthy is False:
-               raise APIConnectionError("API is marked as unhealthy")
-
-   # Usage
-   health_checker = APIHealthChecker("api_key", "secret_key")
-
-   try:
-       health_checker.ensure_healthy()
-       # Proceed with actual API calls
-       response = health_checker.client.get("https://example.com")
-   except APIConnectionError as e:
-       print(f"API unavailable: {e}")
-
-Testing Error Scenarios
------------------------
-
-Unit Testing Error Handling
+Parameter Validation Helpers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Test your error handling logic:
+Create helper functions to validate parameters before making requests:
 
 .. code-block:: python
 
-   import unittest
-   from unittest.mock import patch, MagicMock
-   from askpablos_api import (
-       AskPablos,
-       AuthenticationError,
-       APIConnectionError,
-       ResponseError
-   )
+   def validate_browser_options(**kwargs):
+       """Validate browser-related parameters."""
+       browser_enabled = kwargs.get('browser', False)
+       browser_features = []
 
-   class TestErrorHandling(unittest.TestCase):
-       """Test error handling scenarios."""
+       if kwargs.get('wait_for_load', False) and not browser_enabled:
+           browser_features.append('wait_for_load=True')
+       if kwargs.get('screenshot', False) and not browser_enabled:
+           browser_features.append('screenshot=True')
+       if kwargs.get('js_strategy', 'DEFAULT') != 'DEFAULT' and not browser_enabled:
+           browser_features.append('custom js_strategy')
 
-       def setUp(self):
-           self.client = AskPablos(api_key="test", secret_key="test")
+       if browser_features:
+           features_str = ', '.join(browser_features)
+           raise ValueError(f"browser=True is required for: {features_str}")
 
-       @patch('askpablos_api.ProxyClient.request')
-       def test_authentication_error(self, mock_request):
-           """Test authentication error handling."""
-           mock_request.side_effect = AuthenticationError("Invalid credentials")
+   def safe_browser_request(url, **kwargs):
+       """Make a browser request with validation."""
+       try:
+           validate_browser_options(**kwargs)
+           return client.get(url, **kwargs)
+       except ValueError as e:
+           print(f"Invalid parameters: {e}")
+           return None
 
-           with self.assertRaises(AuthenticationError):
-               self.client.get("https://example.com")
+Error Recovery Strategies
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-       @patch('askpablos_api.ProxyClient.request')
-       def test_connection_error(self, mock_request):
-           """Test connection error handling."""
-           mock_request.side_effect = APIConnectionError("Connection timeout")
-
-           with self.assertRaises(APIConnectionError):
-               self.client.get("https://example.com")
-
-       @patch('askpablos_api.ProxyClient.request')
-       def test_response_error(self, mock_request):
-           """Test response error handling."""
-           mock_request.side_effect = ResponseError("HTTP 404 Not Found")
-
-           with self.assertRaises(ResponseError):
-               self.client.get("https://example.com")
-
-       def test_retry_logic(self):
-           """Test retry logic with mocked failures."""
-           with patch.object(self.client, 'get') as mock_get:
-               # First two calls fail, third succeeds
-               mock_get.side_effect = [
-                   APIConnectionError("Timeout"),
-                   APIConnectionError("Timeout"),
-                   MagicMock(status_code=200, content="Success")
-               ]
-
-               # Implement and test your retry logic here
-               # result = your_retry_function(self.client, "https://example.com")
-               # self.assertEqual(result.status_code, 200)
-
-   # Run tests
-   if __name__ == "__main__":
-       unittest.main()
-
-Error Recovery Patterns
------------------------
-
-Circuit Breaker Pattern
-~~~~~~~~~~~~~~~~~~~~~~~
-
-Implement circuit breaker for failing services:
+Implement fallback strategies for different error types:
 
 .. code-block:: python
 
-   import time
-   from enum import Enum
-   from askpablos_api import AskPablosError, APIConnectionError
+   def robust_request(url, use_browser=True):
+       """Request with fallback strategies."""
+       try:
+           # Try with browser first
+           if use_browser:
+               return client.get(
+                   url=url,
+                   browser=True,
+                   wait_for_load=True,
+                   timeout=45
+               )
+           else:
+               return client.get(url, timeout=15)
 
-   class CircuitState(Enum):
-       CLOSED = "closed"      # Normal operation
-       OPEN = "open"          # Blocking requests
-       HALF_OPEN = "half_open"  # Testing if service recovered
+       except ValueError:
+           # Parameter validation failed, try without browser features
+           print("Browser features invalid, falling back to simple request")
+           return client.get(url, timeout=15)
 
-   class CircuitBreaker:
-       """Circuit breaker for API requests."""
+       except APIConnectionError:
+           # Network issue, try with proxy rotation
+           print("Connection failed, trying with proxy rotation")
+           return client.get(url, rotate_proxy=True, timeout=30)
 
-       def __init__(self, failure_threshold=5, timeout=60):
-           self.failure_threshold = failure_threshold
-           self.timeout = timeout
-           self.failure_count = 0
-           self.last_failure_time = 0
-           self.state = CircuitState.CLOSED
+       except ResponseError as e:
+           # HTTP error, log and re-raise
+           print(f"HTTP error {e}, cannot recover")
+           raise
 
-       def call(self, func, *args, **kwargs):
-           """Execute function with circuit breaker protection."""
-           if self.state == CircuitState.OPEN:
-               if time.time() - self.last_failure_time >= self.timeout:
-                   self.state = CircuitState.HALF_OPEN
-               else:
-                   raise APIConnectionError("Circuit breaker is OPEN")
+Common Error Scenarios
+---------------------
 
-           try:
-               result = func(*args, **kwargs)
-               self._on_success()
-               return result
-           except AskPablosError as e:
-               self._on_failure()
-               raise
+Scenario 1: Invalid Browser Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-       def _on_success(self):
-           """Handle successful request."""
-           self.failure_count = 0
-           self.state = CircuitState.CLOSED
+.. code-block:: python
 
-       def _on_failure(self):
-           """Handle failed request."""
-           self.failure_count += 1
-           self.last_failure_time = time.time()
-
-           if self.failure_count >= self.failure_threshold:
-               self.state = CircuitState.OPEN
-
-   # Usage
-   from askpablos_api import AskPablos
-
-   circuit_breaker = CircuitBreaker(failure_threshold=3, timeout=30)
-   client = AskPablos(api_key="key", secret_key="secret")
-
+   # Problem: Browser features without browser mode
    try:
-       response = circuit_breaker.call(client.get, "https://example.com")
-       print("Request successful")
+       response = client.get(
+           "https://example.com",
+           screenshot=True,      # Requires browser=True
+           browser=False         # But browser is disabled
+       )
+   except ValueError as e:
+       print(f"Fix: Enable browser mode - {e}")
+
+Scenario 2: Network Timeouts
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   # Problem: Timeout too short for browser operations
+   try:
+       response = client.get(
+           "https://heavy-spa.com",
+           browser=True,
+           wait_for_load=True,
+           timeout=5  # Too short for browser rendering
+       )
    except APIConnectionError as e:
-       print(f"Request blocked or failed: {e}")
+       print(f"Fix: Increase timeout for browser operations - {e}")
 
-Summary
--------
+Scenario 3: Authentication Issues
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Key points for effective error handling:
+.. code-block:: python
 
-1. **Use specific exception types** for different recovery strategies
-2. **Implement retry logic** for transient failures
-3. **Log errors appropriately** for debugging and monitoring
-4. **Set up health checks** to monitor API availability
-5. **Test error scenarios** to ensure robust error handling
-6. **Use patterns like circuit breakers** for resilient systems
-7. **Provide meaningful error messages** to users and developers
+   # Problem: Invalid or missing credentials
+   try:
+       client = AskPablos(api_key="invalid", secret_key="invalid")
+       response = client.get("https://example.com")
+   except AuthenticationError as e:
+       print(f"Fix: Check credentials in dashboard - {e}")
 
-By following these practices, you can build robust applications that gracefully handle various error conditions when using the AskPablos API client.
+Testing Error Conditions
+------------------------
+
+Create tests to verify error handling:
+
+.. code-block:: python
+
+   import pytest
+   from askpablos_api import AskPablos, AuthenticationError, ValueError
+
+   def test_parameter_validation():
+       client = AskPablos(api_key="test", secret_key="test")
+
+       # Test browser parameter validation
+       with pytest.raises(ValueError, match="browser=True is required"):
+           client.get(
+               url="https://example.com",
+               browser=False,
+               screenshot=True
+           )
+
+   def test_authentication_error():
+       # Test authentication with empty credentials
+       with pytest.raises(AuthenticationError):
+           AskPablos(api_key="", secret_key="")
+
+   def test_error_recovery():
+       client = AskPablos(api_key="valid", secret_key="valid")
+
+       # Test graceful handling of invalid parameters
+       result = safe_request(
+           "https://example.com",
+           browser=False,
+           screenshot=True  # Should be caught and handled
+       )
+       assert result is None  # Should return None on parameter error

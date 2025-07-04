@@ -1,31 +1,34 @@
+3. :doc:`api_reference` - Complete API documentation
+4. :doc:`examples` - Advanced usage patterns
+5. :doc:`error_handling` - Exception handling guide
 AskPablos API Documentation
-==========================
-
-Welcome to the AskPablos API client documentation. This library provides a professional, simple and secure way to make GET requests through the AskPablos proxy service with rotating IP addresses and browser support.
-
+Support
+-------
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-   installation
-   quickstart
-   api_reference
+* **Documentation**: Complete API reference and examples
+* **Error Handling**: Comprehensive exception system
+* **Validation**: Built-in parameter validation
+* **Logging**: Configurable logging for debugging
    examples
    error_handling
 
 Overview
 --------
 
-The AskPablos API client is a Python library designed for making GET requests through a proxy service. It features:
+The AskPablos API client is a Python library designed for making web requests through a proxy service. It features:
 
 * 🔐 **Secure Authentication**: HMAC-SHA256 signature-based authentication
-* 🌐 **Proxy Support**: Route requests through rotating proxies
-* 🤖 **Browser Integration**: Support for JavaScript-heavy websites
+* 🌐 **Proxy Rotation**: Automatic IP rotation to avoid rate limiting
+* 🤖 **Browser Automation**: Full browser support with JavaScript rendering
+* 📸 **Screenshot Capture**: Take high-quality screenshots of web pages
+* ⏱️ **Smart Page Loading**: Wait for complete page load with dynamic content
+* 🎛️ **JavaScript Strategies**: Fine-tuned JS control (DEFAULT, True, False)
+* 🔄 **Multiple HTTP Methods**: Support for GET, POST, PUT, DELETE, and more
+* 📊 **Query Parameters**: Easy URL parameter handling
 * 🛡️ **Error Handling**: Comprehensive exception handling with specific error types
-* 📊 **Logging**: Built-in logging support for debugging and monitoring
-* 🎯 **Simple Interface**: GET-only requests for clean and focused API
+* 📋 **Custom Headers**: Full control over request headers
 * 🚀 **High Performance**: Optimized for speed and reliability
-* 📦 **Zero Dependencies**: Only requires the standard requests library
+* 📦 **Minimal Dependencies**: Only requires the standard requests library
 
 Key Components
 --------------
@@ -33,16 +36,16 @@ Key Components
 The library consists of several key components:
 
 **AskPablos Class**
-   The main high-level interface for making proxy requests. This is what most users will interact with.
+   The main high-level interface for making proxy requests with comprehensive options for browser automation, proxy rotation, and screenshot capture.
 
 **ProxyClient Class**
-   Lower-level client that handles the direct communication with the AskPablos API service, including authentication and request signing.
+   Lower-level client that handles direct communication with the AskPablos API service, supporting all HTTP methods and advanced proxy configurations.
 
 **ResponseData Class**
-   Response object that provides structured access to response data with dot notation.
+   Enhanced response object that provides structured access to response data, including screenshot data and detailed timing information.
 
 **Exception Classes**
-   Comprehensive exception hierarchy for proper error handling and debugging.
+   Comprehensive exception hierarchy for proper error handling and debugging, including parameter validation.
 
 Quick Example
 -------------
@@ -51,42 +54,54 @@ Quick Example
 
    from askpablos_api import AskPablos
 
-   # Initialize the client
+   # Initialize client
    client = AskPablos(
        api_key="your_api_key",
        secret_key="your_secret_key"
    )
 
-   # Make a GET request
+   # Simple request
    response = client.get("https://httpbin.org/ip")
    print(f"Status: {response.status_code}")
-   print(f"Content: {response.content}")
 
-   # With custom options
+   # Advanced request with browser features
    response = client.get(
-       url="https://example.com",
-       headers={"User-Agent": "Custom Agent"},
-       use_browser=True,
-       timeout=30
+       url="https://spa-example.com",
+       browser=True,
+       wait_for_load=True,
+       screenshot=True,
+       js_strategy="DEFAULT",
+       rotate_proxy=True,
+       timeout=45
    )
 
-Installation
-------------
+New Features in Latest Version
+-----------------------------
 
-Install the library using pip:
+**Enhanced Browser Support**
+   - Screenshot capture with `screenshot=True`
+   - Page load waiting with `wait_for_load=True`
+   - JavaScript strategy control with `js_strategy` options
 
-.. code-block:: bash
+**Proxy Management**
+   - Automatic proxy rotation with `rotate_proxy=True`
+   - Smart timeout handling for different request types
 
-   pip install askpablos-api
+**Parameter Handling**
+   - URL query parameters support with `params` dictionary
+   - Custom headers support with `headers` dictionary
+   - Additional proxy options via `**options`
 
-Requirements
-------------
+**Validation & Error Handling**
+   - Parameter validation for browser-specific features
+   - Enhanced error messages with specific exception types
+   - Improved debugging with detailed response information
 
-- Python 3.9 or higher
-- requests >= 2.25.0
+Getting Started
+---------------
 
-Getting Help
-------------
+1. :doc:`installation` - Install the library
+2. :doc:`quickstart` - Basic usage and examples
 
 * Read the :doc:`quickstart` guide for a quick introduction
 * Check the :doc:`api_reference` for detailed API documentation

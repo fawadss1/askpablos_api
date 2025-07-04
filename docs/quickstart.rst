@@ -58,7 +58,7 @@ Making Your First Request
 
    # Expected output:
    # Status Code: 200
-   # Content: {"origin": "123.456.789.0"}
+   # Content: b'{"origin": "123.456.789.0"}'
    # Headers: {'content-type': 'application/json', ...}
 
 Working with Response Data
@@ -73,25 +73,28 @@ The client returns a ``ResponseData`` object with convenient attributes:
    # Access response properties
    print(f"Status: {response.status_code}")
    print(f"URL: {response.url}")
-   print(f"Time taken: {response.elapsed} seconds")
+   print(f"Time taken: {response.elapsed_time}")
    print(f"Encoding: {response.encoding}")
 
    # For JSON responses, access parsed data
    if response.json:
        print(f"JSON data: {response.json}")
 
-Adding Custom Headers
---------------------
+Adding Custom Headers and Parameters
+-----------------------------------
 
 .. code-block:: python
 
-   # Request with custom headers
+   # Request with custom headers and URL parameters
    response = client.get(
        url="https://httpbin.org/headers",
        headers={
            "User-Agent": "MyApp/1.0",
            "Accept": "application/json",
            "Custom-Header": "custom-value"
+       },
+       params={
+           "page": "1",
        }
    )
 
@@ -105,10 +108,84 @@ For JavaScript-heavy websites, enable browser mode:
    # Enable browser mode for JavaScript rendering
    response = client.get(
        url="https://example.com/spa-app",
-       use_browser=True,
-       timeout=30
+       url="https://example-spa.com",
+       browser=True,
+       wait_for_load=True,
+       timeout=45
    )
 
+   print(f"Rendered content: {response.content}")
+
+Advanced Browser Features
+-------------------------
+
+The browser mode supports several advanced features:
+
+**Taking Screenshots**
+
+.. code-block:: python
+
+   # Take a screenshot of the page
+   response = client.get(
+       url="https://example.com",
+       browser=True,
+       screenshot=True
+   )
+
+   # Save the screenshot
+   if response.screenshot:
+       with open("screenshot.png", "wb") as f:
+           f.write(response.screenshot)
+
+**JavaScript Strategy Control**
+
+.. code-block:: python
+
+   # Control JavaScript execution
+   response = client.get(
+       url="https://example.com",
+       browser=True,
+       js_strategy="DEFAULT",  # Options: "DEFAULT", True, False
+       wait_for_load=True
+   )
+
+**Proxy Rotation**
+
+.. code-block:: python
+
+   # Use proxy rotation to avoid rate limiting
+   response = client.get(
+       url="https://example.com",
+       rotate_proxy=True,
+       timeout=60
+
+
+Combining Multiple Options
+-------------------------
+
+.. code-block:: python
+
+   # Advanced request with multiple options
+   response = client.get(
+       url="https://complex-site.com/data",
+       params={"category": "tech", "sort": "date"},
+       headers={"Authorization": "Bearer token123"},
+       browser=True,
+       wait_for_load=True,
+       screenshot=True,
+       js_strategy="DEFAULT",
+       rotate_proxy=True,
+       timeout=60,
+       # Additional options can be passed via **options
+       user_agent="Custom-Bot/1.0",
+       cookies={"session": "abc123"}
+   )
+
+   print(f"Status: {response.status_code}")
+   print(f"Content length: {len(response.content)}")
+
+   if response.screenshot:
+       print("Screenshot captured successfully")
 Error Handling
 --------------
 
@@ -118,9 +195,9 @@ Always handle potential errors in your code:
 
    from askpablos_api import (
        AskPablos,
+       AskPablos,
        AuthenticationError,
        APIConnectionError,
-       ResponseError
    )
 
    try:
@@ -130,116 +207,75 @@ Always handle potential errors in your code:
        )
        response = client.get("https://example.com")
 
-       if response.status_code == 200:
-           print("Success!")
-           print(response.content)
+       response = client.get(
+           url="https://example.com",
+           browser=True,
+           timeout=30
+       )
 
-   except AuthenticationError as e:
+       print(f"Success: {response.status_code}")
+
        print(f"Authentication failed: {e}")
    except APIConnectionError as e:
        print(f"Connection error: {e}")
    except ResponseError as e:
        print(f"HTTP error: {e}")
    except Exception as e:
+   except ValueError as e:
+       print(f"Invalid parameters: {e}")
        print(f"Unexpected error: {e}")
 
 Setting Up Logging
-------------------
+Parameter Validation
+-------------------
 
-Enable logging to debug your requests:
-
-.. code-block:: python
-
-   from askpablos_api import configure_logging
-   import logging
-
-   # Enable debug logging for the library
-   configure_logging(level="DEBUG")
-
-   # Or configure manually
-   logger = logging.getLogger("askpablos_api")
-   logger.setLevel(logging.INFO)
-
-   # Create console handler
-   handler = logging.StreamHandler()
-   formatter = logging.Formatter(
-       '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-   )
-   handler.setFormatter(formatter)
-   logger.addHandler(handler)
-
-Complete Example
----------------
-
-Here's a complete example that demonstrates all the key features:
+The client validates browser-specific options:
 
 .. code-block:: python
 
-   from askpablos_api import (
-       AskPablos,
-       configure_logging,
-       AuthenticationError
-   )
-
-   # Enable logging
-   configure_logging(level="INFO")
-
+   # This will raise ValueError - browser features require browser=True
    try:
-       # Initialize client
-       client = AskPablos(
-           api_key="your_api_key",
-           secret_key="your_secret_key"
-       )
-
-       # Make a request with all options
        response = client.get(
-           url="https://httpbin.org/user-agent",
-           headers={
-               "User-Agent": "AskPablos-Client/1.0",
-               "Accept": "application/json"
-           },
-           use_browser=False,
-           timeout=30
+           url="https://example.com",
+           browser=False,  # Browser mode disabled
+           screenshot=True  # But screenshot requested
        )
+   except ValueError as e:
+       print(f"Error: {e}")
+       # Output: browser=True is required for these actions: screenshot=True
 
-       # Process response
-       if response.status_code == 200:
-           print(f"✅ Request successful!")
-           print(f"Response time: {response.elapsed:.2f}s")
+Best Practices
+--------------
 
-           if response.json:
-               print(f"JSON data: {response.json}")
-           else:
-               print(f"Content: {response.content[:200]}...")
-       else:
-           print(f"❌ Request failed with status {response.status_code}")
-
-   except AuthenticationError:
-       print("❌ Please check your API credentials")
-   except Exception as e:
-       print(f"❌ Error: {e}")
-
-Next Steps
-----------
-
-Now that you're up and running:
-
-1. Check out the :doc:`examples` for more practical use cases
-2. Read the :doc:`api_reference` for detailed API documentation
-3. Learn about :doc:`error_handling` for robust error management
-4. Configure logging for better debugging and monitoring
-
-Environment Variables
----------------------
-
-For production use, consider storing your credentials in environment variables:
+1. **Keep credentials secure**: Store API keys in environment variables
+2. **Handle timeouts**: Set appropriate timeouts for your use case
+3. **Use browser mode sparingly**: Only when JavaScript rendering is needed
+4. **Enable proxy rotation**: For high-volume scraping to avoid rate limits
+5. **Handle errors gracefully**: Always implement proper error handling
 
 .. code-block:: python
 
    import os
    from askpablos_api import AskPablos
 
+   # Secure credential handling
    client = AskPablos(
        api_key=os.getenv("ASKPABLOS_API_KEY"),
        secret_key=os.getenv("ASKPABLOS_SECRET_KEY")
+   )
+
+   # Optimized request for static content
+   response = client.get(
+       url="https://api.example.com/data",
+       headers={"Accept": "application/json"},
+       timeout=15  # Shorter timeout for API endpoints
+   )
+
+   # Optimized request for dynamic content
+   response = client.get(
+       url="https://spa-example.com",
+       browser=True,
+       wait_for_load=True,
+       js_strategy="DEFAULT",
+       timeout=45  # Longer timeout for browser rendering
    )

@@ -32,278 +32,164 @@ The main client class for making requests through the AskPablos proxy service. T
 
 .. automethod:: askpablos_api.AskPablos.get
 
-   Make a GET request through the proxy service.
+   Make a GET request through the proxy service with comprehensive options for browser automation and proxy control.
 
-   :param url: The URL to request
+   :param url: The target URL to fetch through the proxy
    :type url: str
-   :param headers: Optional custom headers to send with the request
+   :param params: URL query parameters to append to the request
+   :type params: dict, optional
+   :param headers: Custom headers to send to the target URL
    :type headers: dict, optional
-   :param use_browser: Enable browser mode for JavaScript rendering
-   :type use_browser: bool, optional
+   :param browser: Enable browser automation for JavaScript rendering
+   :type browser: bool, optional
+   :param rotate_proxy: Use proxy rotation for this request to avoid rate limiting
+   :type rotate_proxy: bool, optional
+   :param wait_for_load: Wait for page load completion (requires browser=True)
+   :type wait_for_load: bool, optional
+   :param screenshot: Take a screenshot of the page (requires browser=True)
+   :type screenshot: bool, optional
+   :param js_strategy: JavaScript execution strategy ("DEFAULT", True, False)
+   :type js_strategy: str or bool, optional
    :param timeout: Request timeout in seconds (default: 30)
    :type timeout: int, optional
-   :returns: Response data object
+   :param options: Additional proxy options like user_agent, cookies, etc.
+   :type options: dict, optional
+   :returns: Response data object with status, headers, content, and optional screenshot
    :rtype: ResponseData
    :raises APIConnectionError: If connection to the API fails
    :raises ResponseError: If the HTTP response indicates an error
    :raises AuthenticationError: If authentication fails
+   :raises ValueError: If browser-specific options are used without browser=True
 
-ProxyClient
-~~~~~~~~~~~,
+**Parameter Details**
 
-.. autoclass:: askpablos_api.ProxyClient
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. list-table:: AskPablos.get() Parameters
+   :header-rows: 1
+   :widths: 15 10 10 15 50
 
-Lower-level client that handles direct communication with the AskPablos API service, including authentication and request signing. This class is used internally by the AskPablos class but can be used directly for advanced use cases.
+   * - Parameter
+     - Type
+     - Default
+     - Browser Required
+     - Description
+   * - ``url``
+     - str
+     - *Required*
+     - No
+     - Target URL to fetch through the proxy
+   * - ``params``
+     - dict
+     - None
+     - No
+     - URL query parameters to append (e.g., ``{"page": "1", "limit": "10"}``)
+   * - ``headers``
+     - dict
+     - None
+     - No
+     - Custom headers to send to the target URL
+   * - ``browser``
+     - bool
+     - False
+     - N/A
+     - **Master switch**: Enable browser automation for JavaScript rendering
+   * - ``rotate_proxy``
+     - bool
+     - False
+     - No
+     - Use proxy rotation to avoid rate limiting (works with/without browser)
+   * - ``wait_for_load``
+     - bool
+     - False
+     - **Yes**
+     - Wait for page load completion. **Requires browser=True**
+   * - ``screenshot``
+     - bool
+     - False
+     - **Yes**
+     - Take a screenshot of the page. **Requires browser=True**
+   * - ``js_strategy``
+     - str/bool
+     - "DEFAULT"
+     - **Yes***
+     - JavaScript execution strategy. **Requires browser=True** if not "DEFAULT"
+   * - ``timeout``
+     - int
+     - 30
+     - No
+     - Request timeout in seconds
+   * - ``**options``
+     - dict
+     - {}
+     - No
+     - Additional proxy options (user_agent, cookies, etc.)
 
-**Constructor**
+**Browser Dependency Rules**
 
-.. automethod:: askpablos_api.ProxyClient.__init__
+.. important::
 
-   Initialize the ProxyClient with authentication credentials.
+   The following parameters **require browser=True** to function properly:
 
-   :param api_key: Your unique API key
-   :type api_key: str
-   :param secret_key: Your private secret key
-   :type secret_key: str
-   :param api_url: Custom API URL (optional)
-   :type api_url: str, optional
+   * ``wait_for_load=True`` - Cannot wait for page load without browser automation
+   * ``screenshot=True`` - Cannot capture screenshots without browser rendering
+   * ``js_strategy`` (non-"DEFAULT" values) - Cannot control JavaScript without browser
 
-**Methods**
+   **If you try to use these parameters with browser=False, a ValueError will be raised.**
 
-.. automethod:: askpablos_api.ProxyClient.request
+**JavaScript Strategy Options**
 
-   Make a low-level request to the proxy service.
+.. list-table:: JavaScript Strategy Values
+   :header-rows: 1
+   :widths: 20 80
 
-   :param method: HTTP method (only "GET" is supported)
-   :type method: str
-   :param url: Target URL to request
-   :type url: str
-   :param headers: Optional headers
-   :type headers: dict, optional
-   :param options: Additional proxy options
-   :type options: dict, optional
-   :returns: Response data object
-   :rtype: ResponseData
+   * - Value
+     - Description
+   * - ``"DEFAULT"``
+     - Balanced approach with stealth techniques (works with browser=False)
+   * - ``True``
+     - Minimal JavaScript with stealth injection (**requires browser=True**)
+   * - ``False``
+     - No JavaScript execution (**requires browser=True**)
 
-Response Objects
-----------------
-
-ResponseData
-~~~~~~~~~~~~
-
-.. autoclass:: askpablos_api.client.ResponseData
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Response object that provides structured access to HTTP response data.
-
-**Attributes**
-
-.. attribute:: ResponseData.status_code
-
-   HTTP status code of the response.
-
-   :type: int
-
-.. attribute:: ResponseData.headers
-
-   Response headers as a dictionary.
-
-   :type: dict
-
-.. attribute:: ResponseData.content
-
-   Response body as a string.
-
-   :type: str
-
-.. attribute:: ResponseData.url
-
-   Final URL after any redirects.
-
-   :type: str
-
-.. attribute:: ResponseData.elapsed
-
-   Request duration in seconds.
-
-   :type: float
-
-.. attribute:: ResponseData.encoding
-
-   Response text encoding.
-
-   :type: str or None
-
-.. attribute:: ResponseData.json
-
-   Parsed JSON data if the response is JSON, None otherwise.
-
-   :type: dict or None
-
-Exception Classes
------------------
-
-The library provides a comprehensive exception hierarchy for proper error handling:
-
-.. automodule:: askpablos_api.exceptions
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-AskPablosError
-~~~~~~~~~~~~~~
-
-.. autoexception:: askpablos_api.AskPablosError
-   :members:
-   :show-inheritance:
-
-Base exception class for all AskPablos API errors. All other exceptions inherit from this class.
-
-AuthenticationError
-~~~~~~~~~~~~~~~~~~~
-
-.. autoexception:: askpablos_api.AuthenticationError
-   :members:
-   :show-inheritance:
-
-Raised when there are authentication problems:
-
-- Missing or empty API key
-- Missing or empty secret key
-- Invalid credentials
-- HMAC signature verification failure
-
-APIConnectionError
-~~~~~~~~~~~~~~~~~~
-
-.. autoexception:: askpablos_api.APIConnectionError
-   :members:
-   :show-inheritance:
-
-Raised when there are network or connection issues:
-
-- Network timeouts
-- DNS resolution failures
-- Connection refused errors
-- SSL/TLS errors
-
-ResponseError
-~~~~~~~~~~~~~
-
-.. autoexception:: askpablos_api.ResponseError
-   :members:
-   :show-inheritance:
-
-Raised when the API returns an HTTP error response:
-
-- 4xx client errors
-- 5xx server errors
-- Malformed response data
-
-Utility Functions
------------------
-
-configure_logging
-~~~~~~~~~~~~~~~~~~
-
-.. autofunction:: askpablos_api.configure_logging
-
-   Configure logging for the AskPablos API client.
-
-   :param level: Logging level ("DEBUG", "INFO", "WARNING", "ERROR")
-   :type level: str
-   :param format_string: Custom log format string
-   :type format_string: str, optional
-
-**Example usage:**
+**Parameter Validation Examples**
 
 .. code-block:: python
 
-   from askpablos_api import configure_logging
-
-   # Enable debug logging
-   configure_logging(level="DEBUG")
-
-   # Custom format
-   configure_logging(
-       level="INFO",
-       format_string="%(asctime)s [%(levelname)s] %(message)s"
-   )
-
-build_proxy_options
-~~~~~~~~~~~~~~~~~~~~
-
-.. autofunction:: askpablos_api.utils.build_proxy_options
-
-   Build proxy options dictionary for API requests.
-
-   :param use_browser: Enable browser mode
-   :type use_browser: bool
-   :param timeout: Request timeout
-   :type timeout: int
-   :param additional_options: Additional options
-   :type additional_options: dict, optional
-   :returns: Formatted options dictionary
-   :rtype: dict
-
-Constants
----------
-
-.. autodata:: askpablos_api.config.DEFAULT_API_URL
-
-   Default API endpoint URL.
-
-   :type: str
-
-.. autodata:: askpablos_api.__version__
-
-   Current library version.
-
-   :type: str
-
-Usage Examples
---------------
-
-**Basic Usage**
-
-.. code-block:: python
-
-   from askpablos_api import AskPablos
-
-   client = AskPablos(api_key="key", secret_key="secret")
+   # ✅ Valid: Basic request without browser features
    response = client.get("https://example.com")
 
-**Advanced Usage with ProxyClient**
-
-.. code-block:: python
-
-   from askpablos_api import ProxyClient
-
-   client = ProxyClient(api_key="key", secret_key="secret")
-   response = client.request(
-       method="GET",
+   # ✅ Valid: Browser enabled with browser-specific features
+   response = client.get(
        url="https://example.com",
-       headers={"User-Agent": "Custom"},
-       options={"use_browser": True, "timeout": 30}
+       browser=True,           # Browser enabled
+       wait_for_load=True,     # Valid with browser=True
+       screenshot=True,        # Valid with browser=True
+       js_strategy=True        # Valid with browser=True
    )
 
-**Error Handling**
+   # ✅ Valid: Proxy rotation works without browser
+   response = client.get(
+       url="https://example.com",
+       rotate_proxy=True       # Works independently
+   )
 
-.. code-block:: python
-
-   from askpablos_api import AskPablos, AuthenticationError, APIConnectionError
-
+   # ❌ Invalid: Browser features without browser=True
    try:
-       client = AskPablos(api_key="key", secret_key="secret")
-       response = client.get("https://example.com")
-   except AuthenticationError:
-       print("Check your credentials")
-   except APIConnectionError:
-       print("Network issue")
-   except Exception as e:
-       print(f"Other error: {e}")
+       response = client.get(
+           url="https://example.com",
+           browser=False,      # Browser disabled
+           screenshot=True     # But screenshot requested
+       )
+   except ValueError as e:
+       print(e)  # "browser=True is required for these actions: screenshot=True"
+
+   # ❌ Invalid: Multiple browser features without browser=True
+   try:
+       response = client.get(
+           url="https://example.com",
+           browser=False,        # Browser disabled
+           wait_for_load=True,   # Browser feature
+           screenshot=True,      # Browser feature
+           js_strategy=False     # Browser feature
+       )
+   except ValueError as e:
+       print(e)  # "browser=True is required for these actions: wait_for_load=True, screenshot=True, js_strategy=True"
