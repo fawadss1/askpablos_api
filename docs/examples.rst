@@ -1,7 +1,126 @@
-Examples
-========
+# Default strategy (balanced)
+   response = client.get(
+       url="https://normal-site.com",
+       browser=True,
+       js_strategy="DEFAULT"
+   )
 
-This section provides practical examples of using the AskPablos API client for various scenarios.
+All Browser Features Combined
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   # Use all browser features together
+   response = client.get(
+       url="https://advanced-webapp.com",
+       browser=True,
+       rotate_proxy=True,
+       wait_for_load=True,
+       screenshot=True,
+       js_strategy="DEFAULT",
+       timeout=45
+Examples
+
+   print(f"Status: {response.status_code}")
+   print(f"Content length: {len(response.content)}")
+   print(f"Request time: {elapsed_time}")
+
+   if response.screenshot:
+       with open("webapp_screenshot.png", "wb") as f:
+           f.write(response.screenshot)
+       print("Screenshot captured and saved!")
+
+Advanced Use Cases
+------------------
+========
+E-commerce Product Scraping
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   # Scrape dynamic product pages with screenshots
+   products = [
+       "https://shop.example.com/product/123",
+       "https://shop.example.com/product/456"
+   ]
+
+   for i, product_url in enumerate(products):
+       response = client.get(
+           url=product_url,
+           browser=True,
+           wait_for_load=True,
+           screenshot=True,
+           js_strategy="DEFAULT",
+           rotate_proxy=True
+       )
+
+       print(f"Product {i+1}: Status {response.status_code}")
+
+       # Save product screenshot
+       if response.screenshot:
+           with open(f"product_{i+1}_screenshot.png", "wb") as f:
+               f.write(response.screenshot)
+
+Social Media Content
+~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   # Fetch social media posts (which often use heavy JavaScript)
+   response = client.get(
+       url="https://social-media-site.com/post/abc123",
+       browser=True,
+       js_strategy="AGGRESSIVE",
+       wait_for_load=True,
+       screenshot=True,
+       timeout=30
+   )
+
+   if response.status_code == 200:
+       print("Social media content fetched successfully")
+
+       # Save evidence screenshot
+       if response.screenshot:
+           with open("social_post_screenshot.png", "wb") as f:
+               f.write(response.screenshot)
+
+News Website Monitoring
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   import time
+
+   news_sites = [
+       "https://news-site1.com",
+       "https://news-site2.com",
+       "https://news-site3.com"
+   ]
+
+   for site in news_sites:
+       try:
+           response = client.get(
+               url=site,
+               browser=True,
+               screenshot=True,
+               rotate_proxy=True,
+               timeout=30
+           )
+
+           print(f"✅ {site}: {response.status_code}")
+
+           # Save screenshot with timestamp
+           timestamp = int(time.time())
+           if response.screenshot:
+               filename = f"news_{timestamp}_{site.split('//')[1].split('.')[0]}.png"
+               with open(filename, "wb") as f:
+                   f.write(response.screenshot)
+
+       except Exception as e:
+           print(f"❌ {site}: {e}")
+
+       # Rate limiting
+       time.sleep(2)
 
 Basic Web Scraping
 -------------------
@@ -22,7 +141,7 @@ Simple Page Fetching
    response = client.get("https://example.com")
    print(f"Status: {response.status_code}")
    print(f"Content length: {len(response.content)}")
-   print(f"Response time: {response.elapsed:.2f}s")
+   print(f"Response time: {elapsed_time}")
 
 Fetching with Custom Headers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -50,15 +169,80 @@ JavaScript-Heavy Sites
 
 .. code-block:: python
 
-   # For single-page applications or dynamic content
+   # Enable browser automation for JavaScript rendering
    response = client.get(
        url="https://spa-website.com",
-       use_browser=True,
-       timeout=60  # Allow more time for JS rendering
+       browser=True,
+       rotate_proxy=True
    )
 
-   rendered_html = response.content
-   print(f"Rendered content length: {len(rendered_html)}")
+   print(f"SPA content length: {len(response.content)}")
+
+Browser Automation Features
+---------------------------
+
+Screenshot Capture
+~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   # Capture a screenshot while fetching the page
+   response = client.get(
+       url="https://example.com",
+       browser=True,
+       screenshot=True,
+       rotate_proxy=True
+   )
+
+   # Save the screenshot
+   if response.screenshot:
+       with open("example_screenshot.png", "wb") as f:
+           f.write(response.screenshot)
+       print("Screenshot saved successfully!")
+
+Wait for Page Load
+~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   # Wait for complete page load (useful for SPAs and dynamic content)
+   response = client.get(
+       url="https://dynamic-content-site.com",
+       browser=True,
+       wait_for_load=True,
+       rotate_proxy=True,
+       timeout=60  # Longer timeout for complex pages
+   )
+
+   print(f"Fully loaded content: {len(response.content)} characters")
+
+JavaScript Execution Strategies
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   # Stealth script with minimal JavaScript execution (best for protected sites)
+   response = client.get(
+       url="https://protected-site.com",
+       browser=True,
+       js_strategy=True,
+       wait_for_load=True,
+       screenshot=True
+   )
+
+   # No stealth injection, no JavaScript rendering (fastest performance)
+   response = client.get(
+       url="https://simple-site.com",
+       browser=True,
+       js_strategy=False
+   )
+
+   # Default strategy (follows our optimized techniques)
+   response = client.get(
+       url="https://normal-site.com",
+       browser=True,
+       js_strategy="DEFAULT"
+   )
 
 API Integration
 ---------------
@@ -179,7 +363,7 @@ Processing Multiple URLs
                "url": url,
                "status_code": response.status_code,
                "content_length": len(response.content),
-               "elapsed": response.elapsed,
+               "elapsed_time": response.elapsed_time,
                "success": response.status_code == 200
            }
        except Exception as e:
@@ -211,7 +395,7 @@ Processing Multiple URLs
                results.append(result)
 
                if result["success"]:
-                   print(f"✅ {result['url']} - {result['status_code']} ({result['elapsed']:.2f}s)")
+                   print(f"✅ {result['url']} - {result['status_code']} ({result['elapsed_time']})")
                else:
                    print(f"❌ {result['url']} - {result.get('error', 'Failed')}")
 
@@ -304,7 +488,7 @@ Rate Limiting and Delays
    urls = ["https://httpbin.org/delay/1"] * 5
    for url in urls:
        response = client.get(url)
-       print(f"Response {response.status_code} in {response.elapsed:.2f}s")
+       print(f"Response {response.status_code} in {elapsed_time}")
 
 Data Extraction
 ---------------
@@ -394,7 +578,7 @@ Request Logging
    for url in urls:
        logger.info(f"Requesting: {url}")
        response = client.get(url)
-       logger.info(f"Response: {response.status_code} in {response.elapsed:.2f}s")
+       logger.info(f"Response: {response.status_code} in {elapsed_time}")
 
 Performance Monitoring
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -426,7 +610,7 @@ Performance Monitoring
 
                times.append(elapsed)
                status_codes.append(response.status_code)
-               print(f"  Iteration {i+1}: {response.status_code} in {elapsed:.2f}s")
+               print(f"  Iteration {i+1}: {response.status_code} in {elapsed_time}")
 
            results[url] = {
                "mean_time": mean(times),

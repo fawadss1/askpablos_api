@@ -8,7 +8,7 @@ functionality, including logging configuration and option building.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 # Configure logging
 logger = logging.getLogger("askpablos_api")
@@ -43,8 +43,9 @@ def configure_logging(level: int = logging.INFO,
 
 def build_proxy_options(browser: bool = False,
                         rotate_proxy: bool = True,
-                        user_agent: Optional[str] = None,
-                        cookies: Optional[Dict[str, str]] = None,
+                        wait_for_load: bool = False,
+                        screenshot: bool = False,
+                        js_strategy="DEFAULT",
                         **kwargs) -> Dict[str, Any]:
     """
     Build a dictionary of options for the proxy request.
@@ -55,8 +56,15 @@ def build_proxy_options(browser: bool = False,
     Args:
         browser (bool, optional): Whether to use browser automation. Defaults to False.
         rotate_proxy (bool, optional): Whether to use proxy rotation. Defaults to True.
-        user_agent (str, optional): Custom User-Agent string.
-        cookies (Dict[str, str], optional): Dictionary of cookies.
+        wait_for_load (bool, optional): Whether to wait for page load completion.
+                                      Requires browser=True. Defaults to False.
+        screenshot (bool, optional): Whether to take a screenshot of the page.
+                                   Requires browser=True. Defaults to False.
+        js_strategy (str|bool, optional): JavaScript execution strategy when using browser.
+                                   Options: True (stealth script & minimal JS),
+                                   False (no stealth injection, no JS rendering),
+                                   "DEFAULT" (follows our techniques).
+                                   Requires browser=True. Defaults to "DEFAULT".
         **kwargs: Additional options to include in the proxy request.
 
     Returns:
@@ -67,11 +75,11 @@ def build_proxy_options(browser: bool = False,
         "rotate_proxy": rotate_proxy
     }
 
-    if user_agent:
-        options["user_agent"] = user_agent
-
-    if cookies:
-        options["cookies"] = cookies
+    # Add browser-specific options only if browser is enabled
+    if browser:
+        options["wait_for_load"] = wait_for_load
+        options["screenshot"] = screenshot
+        options["js_strategy"] = js_strategy
 
     # Add any additional options
     options.update(kwargs)

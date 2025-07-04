@@ -82,244 +82,179 @@ AskPablos(api_key: str, secret_key: str)
 ```python
 get(url: str, params: Optional[Dict[str, str]] = None, 
     headers: Optional[Dict[str, str]] = None, browser: bool = False,
-    rotate_proxy: bool = True, timeout: int = 30, **options) -> Dict[str, Any]
+    rotate_proxy: bool = False, wait_for_load: bool = False,
+    screenshot: bool = False, js_strategy: str = "DEFAULT",
+    timeout: int = 30, **options) -> ResponseData
 ```
 
-Send a GET request through the proxy.
+Send a GET request through the proxy with advanced browser automation support.
 
 **Parameters:**
 - `url` (str): Target URL to fetch
 - `params` (dict, optional): Query parameters
 - `headers` (dict, optional): Custom headers
 - `browser` (bool, optional): Use browser automation (default: False)
-- `rotate_proxy` (bool, optional): Enable proxy rotation (default: True)
-- `timeout` (int): Request timeout in seconds (default: 30)
-- `**options`: Additional proxy options
+- `rotate_proxy` (bool, optional): Enable proxy rotation (default: False)
+- `wait_for_load` (bool, optional): Wait for complete page load (requires browser=True)
+- `screenshot` (bool, optional): Capture page screenshot (requires browser=True)
+- `js_strategy` (str|bool, optional): JavaScript execution strategy when using browser.
+                                       Options: True (stealth script & minimal JS), 
+                                       False (no stealth injection, no JS rendering),
+                                       "DEFAULT" (follows our techniques).
+                                       Requires browser=True. Defaults to "DEFAULT".
+            timeout (int): Request timeout in seconds (default: 30)
+            **options: Additional proxy options
 
-**Returns:** Dictionary containing the API response
+**Returns:** `ResponseData` object containing the API response
 
-**Example:**
+**Raises:**
+- `ValueError`: If browser-specific options are used without browser=True
+- `APIConnectionError`: If connection to API fails
+- `ResponseError`: If API returns an error
+- `AuthenticationError`: If authentication fails
+
+## Browser Automation Features
+
+### Overview
+
+The AskPablos API now supports advanced browser automation for handling JavaScript-heavy websites, SPAs, and dynamic content. These features require `browser=True` to be enabled.
+
+### Browser Parameters
+
+#### browser (bool)
+Enable headless browser automation for JavaScript rendering.
+
 ```python
-response = client.get("https://api.example.com/users", params={"page": 1})
+response = client.get("https://spa-website.com", browser=True)
 ```
 
-### ProxyClient Class
-
-Lower-level client for direct API communication.
-
-#### Methods
-
-##### request()
+#### wait_for_load (bool)
+Wait for complete page load including dynamic content. Useful for Single Page Applications.
 
 ```python
-request(url: str, method: str = "GET", data: dict = None,
-        headers: dict = None, params: dict = None,
-        options: dict = None, timeout: int = 30) -> dict
-```
-
-Send a request with full control over options.
-
-### Proxy Options
-
-All request methods accept these options:
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `browser` | bool | `False` | Use browser automation for JavaScript rendering |
-| `rotate_proxy` | bool | `True` | Enable proxy rotation |
-| `user_agent` | str | None | Custom user agent string |
-| `cookies` | dict | None | Cookies to send with request |
-| `timeout` | int | 30 | Request timeout in seconds |
-
-### Response Format
-
-All successful API calls return a dictionary with the following structure:
-
-```python
-{
-    "status_code": 200,
-    "headers": {"content-type": "application/json", ...},
-    "content": "Response body",
-    "url": "Final URL after redirects",
-    "proxy_used": "proxy.example.com:8080",
-    "time_taken": 1.23
-}
-```
-
-## Examples
-
-### Web Scraping
-
-```python
-# Scrape a static website
-response = client.get("https://quotes.toscrape.com/")
-html_content = response["content"]
-
-# Scrape a JavaScript-heavy site
-response = client.get("https://spa-website.com/", browser=True)
-rendered_html = response["content"]
-```
-
-### API Integration
-
-```python
-# Fetch data from a REST API
-users = client.get("https://jsonplaceholder.typicode.com/users")
-
-# API with authentication
 response = client.get(
-    "https://api.example.com/protected",
-    headers={"Authorization": "Bearer your_token_here"}
+    "https://dynamic-site.com",
+    browser=True,
+    wait_for_load=True,
+    timeout=60  # Longer timeout for complex pages
 )
 ```
 
-### Monitoring Multiple URLs
+#### screenshot (bool)
+Capture a screenshot of the rendered page. Returns base64-encoded PNG data.
 
 ```python
-urls_to_check = [
-    "https://site1.com",
-    "https://site2.com/api/health", 
-    "https://site3.com/status"
-]
-
-for url in urls_to_check:
-    try:
-        response = client.get(url)
-        print(f"✅ {url} - Status: {response['status_code']}")
-    except Exception as e:
-        print(f"❌ {url} - Error: {e}")
-```
-
-## Error Handling
-
-### Exception Hierarchy
-
-```
-AskPablosError
-├── AuthenticationError
-├── APIConnectionError
-└── ResponseError
-```
-
-### Common Error Scenarios
-
-#### Authentication Issues
-
-```python
-from askpablos_api import AuthenticationError
-
-try:
-    client = AskPablos("", "")  # Empty credentials
-except AuthenticationError as e:
-    print(f"Auth error: {e}")
-```
-
-#### Network Problems
-
-```python
-from askpablos_api import APIConnectionError
-
-try:
-    response = client.get("https://example.com")
-except APIConnectionError as e:
-    print(f"Connection failed: {e}")
-    # Implement retry logic here
-```
-
-#### API Errors
-
-```python
-from askpablos_api import ResponseError
-
-try:
-    response = client.get("https://httpbin.org/status/500")
-except ResponseError as e:
-    print(f"API returned error {e.status_code}: {e.message}")
-```
-
-## Advanced Usage
-
-### Custom Headers and Authentication
-
-```python
-# API with bearer token
 response = client.get(
-    "https://api.example.com/protected",
-    headers={"Authorization": "Bearer your_token_here"}
+    "https://example.com",
+    browser=True,
+    screenshot=True
 )
 
-# API with API key in header
+# Save screenshot
+if response.screenshot:
+    with open("screenshot.png", "wb") as f:
+        f.write(response.screenshot)
+```
+
+#### js_strategy (str|bool)
+Control JavaScript execution strategy:
+
+- **`True`**: Runs stealth script & minimal JS (best for protected sites)
+- **`False`**: No stealth injection, no JS rendering (fastest performance)
+- **`"DEFAULT"`**: Follows our optimized techniques (balanced approach)
+
+```python
+# For protected sites requiring stealth
 response = client.get(
-    "https://api.example.com/data",
-    headers={"X-API-Key": "your_api_key"}
+    "https://protected-site.com",
+    browser=True,
+    js_strategy=True,
+    wait_for_load=True
+)
+
+# For fast loading without JS
+response = client.get(
+    "https://simple-site.com",
+    browser=True,
+    js_strategy=False
+)
+
+# Default balanced approach
+response = client.get(
+    "https://normal-site.com",
+    browser=True,
+    js_strategy="DEFAULT"
 )
 ```
 
-### Session Management
+#### rotate_proxy (bool)
+Use rotating proxy IP addresses to avoid rate limiting and IP blocks.
 
 ```python
-# Use session cookies for subsequent requests
-protected_data = client.get(
-    "https://example.com/protected",
-    cookies={"session": "session_cookie_value"}
+response = client.get(
+    "https://protected-site.com",
+    browser=True,
+    rotate_proxy=True
 )
 ```
 
-### Rate Limiting
+### Browser Feature Validation
+
+The API validates that browser-specific features are only used when `browser=True`:
 
 ```python
-import time
+# ❌ This will raise ValueError
+client.get("https://example.com", screenshot=True)
+# Error: browser=True is required for these actions: screenshot=True
 
-urls = ["https://api.example.com/endpoint1", 
-        "https://api.example.com/endpoint2"]
+# ❌ This will raise ValueError with multiple issues
+client.get("https://example.com", 
+          wait_for_load=True, 
+          screenshot=True, 
+          js_strategy=True)
+# Error: browser=True is required for these actions: wait_for_load=True, screenshot=True, js_strategy=True
 
-for url in urls:
-    response = client.get(url)
-    print(f"Fetched {url}: {response['status_code']}")
-    time.sleep(1)  # Rate limit to 1 request per second
+# ✅ This is correct
+client.get("https://example.com", browser=True, screenshot=True)
 ```
 
-### Debugging
+### ResponseData Object
+
+The response object now includes browser-specific data:
 
 ```python
-from askpablos_api import configure_logging
-import logging
-
-# Enable detailed logging
-configure_logging(level=logging.DEBUG)
-
-# All requests will now be logged with details
-client = AskPablos(api_key="...", secret_key="...")
-response = client.get("https://example.com")
+class ResponseData:
+    status_code: int        # HTTP status code
+    headers: Dict[str, str] # Response headers
+    content: str           # Response body
+    url: str              # Final URL after redirects
+    elapsed_time: str        # Request duration in seconds
+    encoding: str         # Response encoding
+    json: dict           # Parsed JSON (if available)
+    screenshot: str      # Base64 screenshot (if requested)
 ```
 
-## Performance Tips
+### Complete Browser Example
 
-1. **Reuse Client Instance**: Create one client and reuse it for multiple requests
-2. **Disable Browser Mode**: Only use `browser=True` when necessary for JavaScript
-3. **Connection Pooling**: The underlying requests library handles this automatically
-4. **Timeout Settings**: Set appropriate timeouts for your use case
-5. **Proxy Rotation**: Keep `rotate_proxy=True` for better reliability
+```python
+# Use all browser features together
+response = client.get(
+    url="https://advanced-webapp.com",
+    browser=True,
+    rotate_proxy=True,
+    wait_for_load=True,
+    screenshot=True,
+    js_strategy="DEFAULT",
+    timeout=45
+)
 
-## Troubleshooting
+print(f"Status: {response.status_code}")
+print(f"Content length: {len(response.content)}")
+print(f"Request time: {response.elapsed_time}")
 
-### Common Issues
-
-**Issue**: `AuthenticationError: API key is required`
-**Solution**: Ensure your API key is not empty and properly set
-
-**Issue**: `APIConnectionError: Failed to connect to API`
-**Solution**: Check your internet connection and API availability
-
-**Issue**: `ResponseError: API response error (status 429)`
-**Solution**: You're being rate limited. Implement delays between requests
-
-**Issue**: Requests timing out
-**Solution**: Increase the timeout parameter or check target website availability
-
-## Contact
-
-For support and questions:
-- **Author**: Fawad Ali
-- **Email**: fawadstar6@gmail.com
-- **Version**: 0.1.0
+if response.screenshot:
+    # Save screenshot
+    with open("webapp_screenshot.png", "wb") as f:
+        f.write(response.screenshot)
+    print("Screenshot saved!")
+```

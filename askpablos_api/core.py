@@ -60,6 +60,9 @@ class AskPablos:
             headers: Optional[Dict[str, str]] = None,
             browser: bool = False,
             rotate_proxy: bool = False,
+            wait_for_load: bool = False,
+            screenshot: bool = False,
+            js_strategy: str = "DEFAULT",
             timeout: int = 30,
             **options
     ) -> ResponseData:
@@ -80,7 +83,16 @@ class AskPablos:
                                     dynamic content. Defaults to False.
             rotate_proxy (bool, optional): Whether to use proxy rotation for this
                                          request. Helps avoid rate limiting.
-                                         Defaults to True.
+                                         Defaults to False.
+            wait_for_load (bool, optional): Whether to wait for page load completion.
+                                          Requires browser=True. Defaults to False.
+            screenshot (bool, optional): Whether to take a screenshot of the page.
+                                       Requires browser=True. Defaults to False.
+            js_strategy (str|bool, optional): JavaScript execution strategy when using browser.
+                                       Options: True (stealth script & minimal JS),
+                                       False (no stealth injection, no JS rendering),
+                                       "DEFAULT" (follows our techniques).
+                                       Requires browser=True. Defaults to "DEFAULT".
             timeout (int, optional): Request timeout in seconds. Defaults to 30.
             **options: Additional proxy options like user_agent, cookies, etc.
 
@@ -90,19 +102,37 @@ class AskPablos:
                 - headers (Dict[str, str]): Response headers from target server
                 - content (str): Response body/content
                 - url (str): Final URL after any redirects
-                - elapsed (float): Time taken to complete the request in seconds
+                - elapsed_time (float): Time taken to complete the request in seconds
                 - encoding (Optional[str]): Response text encoding
                 - json (Optional[Dict[str, Any]]): Parsed JSON data if available
+                - screenshot (Optional[str]): Base64 encoded screenshot if requested
 
         Raises:
             APIConnectionError: If the client cannot connect to the AskPablos API.
             ResponseError: If the API returns an error status code.
             AuthenticationError: If authentication fails.
+            ValueError: If browser-specific options are used without browser=True.
         """
+        # Validate browser-specific options
+        if not browser and (wait_for_load or screenshot or js_strategy != "DEFAULT"):
+            browser_features = []
+            if wait_for_load:
+                browser_features.append("wait_for_load=True")
+            if screenshot:
+                browser_features.append("screenshot=True")
+            if js_strategy != "DEFAULT":
+                browser_features.append("js_strategy=True")
+
+            features_str = ", ".join(browser_features)
+            raise ValueError(f"browser=True is required for these actions: {features_str}")
+
         # Build proxy options
         proxy_options = build_proxy_options(
             browser=browser,
             rotate_proxy=rotate_proxy,
+            wait_for_load=wait_for_load,
+            screenshot=screenshot,
+            js_strategy=js_strategy,
             **options
         )
 

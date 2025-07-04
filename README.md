@@ -9,12 +9,7 @@
 [![GitHub Issues](https://img.shields.io/github/issues/fawadss1/askpablos_api.svg)](https://github.com/fawadss1/askpablos_api/issues)
 [![GitHub Last Commit](https://img.shields.io/github/last-commit/fawadss1/askpablos_api.svg)](https://github.com/fawadss1/askpablos_api/commits)
 
-[![Documentation Status](https://readthedocs.org/projects/askpablos-api/badge/?version=latest)](https://askpablos-api.readthedocs.io/en/latest/?badge=latest)
-[![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Type Checking: MyPy](https://img.shields.io/badge/type%20checking-mypy-blue.svg)](https://github.com/python/mypy)
-[![Testing: Pytest](https://img.shields.io/badge/testing-pytest-blue.svg)](https://github.com/pytest-dev/pytest)
-
-A professional Python client library for making GET requests through the AskPablos proxy API service. This library provides a clean, secure, and easy-to-use interface for fetching web pages and APIs through the AskPablos proxy infrastructure with rotating IP addresses and browser support.
+A professional Python client library for making GET requests through the AskPablos proxy API service. This library provides a clean, secure, and easy-to-use interface for fetching web pages and APIs through the AskPablos proxy infrastructure with rotating IP addresses and advanced browser automation support.
 
 ## Documentation
 
@@ -24,7 +19,10 @@ Full documentation is available at: [https://askpablos-api.readthedocs.io/en/lat
 
 - 🔐 **Secure Authentication**: HMAC-SHA256 signature-based authentication
 - 🌐 **Proxy Support**: Route requests through rotating proxies
-- 🤖 **Browser Integration**: Support for JavaScript-heavy websites
+- 🤖 **Browser Automation**: Full browser support with JavaScript rendering
+- 📸 **Screenshot Capture**: Take screenshots of web pages
+- ⏱️ **Page Load Waiting**: Wait for complete page load with dynamic content
+- 🎛️ **JavaScript Strategies**: Stealth, standard, and no-JS options
 - 🛡️ **Error Handling**: Comprehensive exception handling with specific error types
 - 📊 **Logging**: Built-in logging support for debugging and monitoring
 - 🎯 **Simple Interface**: GET-only requests for clean and focused API

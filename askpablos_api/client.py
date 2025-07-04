@@ -12,7 +12,7 @@ authentication handling, or for building custom interfaces on top of the base cl
 """
 
 import json
-import base64
+from base64 import b64encode, b64decode
 import hmac
 import hashlib
 import requests
@@ -24,16 +24,17 @@ from .exceptions import APIConnectionError, ResponseError, AuthenticationError
 class ResponseData:
     """Response object that provides dot notation access to response data."""
 
-    def __init__(self, status_code: int, headers: Dict[str, str], content: str,
-                 url: str, elapsed: float, encoding: Optional[str],
-                 json_data: Optional[Dict[str, Any]] = None):
+    def __init__(self, status_code: int, headers: Dict[str, str], content: bytes,
+                 url: str, elapsed_time: str, encoding: Optional[str],
+                 json_data: Optional[Dict[str, Any]] = None, screenshot: Optional[bytes] = None):
         self.status_code = status_code
         self.headers = headers
         self.content = content
         self.url = url
-        self.elapsed = elapsed
+        self.elapsed_time = elapsed_time
         self.encoding = encoding
         self.json = json_data
+        self.screenshot = screenshot
 
 
 class ProxyClient:
@@ -109,7 +110,7 @@ class ProxyClient:
             payload.encode(),
             hashlib.sha256
         ).digest()
-        return base64.b64encode(signature).decode()
+        return b64encode(signature).decode()
 
     def _build_headers(self, payload: str) -> dict:
         """
@@ -173,8 +174,6 @@ class ProxyClient:
             The options dictionary can contain:
             - browser (bool): Use browser automation for JavaScript rendering
             - rotate_proxy (bool): Use proxy rotation for this request
-            - user_agent (str): Custom user agent string
-            - cookies (dict): Cookies to include with the request
             - Any other proxy-specific options supported by the API
 
         Returns:
@@ -197,21 +196,25 @@ class ProxyClient:
             "url": url,
             "method": method.upper(),
             "browser": options.get("browser", False),
-            "rotateProxy": options.get("rotate_proxy", False)
+            "rotateProxy": options.get("rotate_proxy", False),
+            "data": data if data else None,
+            "headers": headers if headers else None,
+            "params": params if params else None,
         }
 
-        if data:
-            request_data["data"] = data
+        # Add browser-specific options if browser is enabled
+        if options.get("browser", False):
+            if "wait_for_load" in options:
+                request_data["waitForLoad"] = options["wait_for_load"]
+            if "screenshot" in options:
+                request_data["screenshot"] = options["screenshot"]
+            if "js_strategy" in options:
+                request_data["jsStrategy"] = options["js_strategy"]
 
-        if headers:
-            request_data["headers"] = headers
-
-        if params:
-            request_data["params"] = params
-
-        # Add any additional options
+        # Add any additional options (excluding the ones we've already handled)
+        excluded_keys = ["browser", "rotate_proxy", "wait_for_load", "screenshot", "js_strategy"]
         for key, value in options.items():
-            if key not in ["browser", "rotate_proxy"]:
+            if key not in excluded_keys:
                 request_data[key] = value
 
         # Convert to JSON with same separators as your example
@@ -225,18 +228,24 @@ class ProxyClient:
                 error_msg = response.json().get('error', 'Unknown error') if response.text else 'No error details provided'
                 raise ResponseError(response.status_code, error_msg)
 
+            # Parse the API response
+            api_response = response.json()
+            response_content = b64decode(api_response.get('responseBody', ''))
+            screenshot_content = b64decode(api_response.get('screenshot', None))
+
             # Return complete response information
             response_data = ResponseData(
                 url=response.url,
                 status_code=response.status_code,
                 headers=dict(response.headers),
-                content=json.loads(response.text).get('data'),
-                elapsed=response.elapsed.total_seconds(),
-                encoding=response.encoding
+                content=response_content,
+                elapsed_time=f"{response.elapsed.total_seconds():.2f}s",
+                encoding=response.encoding,
+                screenshot=screenshot_content
             )
 
             try:
-                response_data.json = response.json()
+                response_data.json = api_response
             except (ValueError, json.JSONDecodeError):
                 response_data.json = None
 
