@@ -1,16 +1,19 @@
-3. :doc:`api_reference` - Complete API documentation
-4. :doc:`examples` - Advanced usage patterns
-5. :doc:`error_handling` - Exception handling guide
 AskPablos API Documentation
-Support
--------
+===========================
+
+Welcome to the AskPablos API client documentation. This Python library provides a simple and powerful interface for making web requests through the AskPablos proxy service.
+
 .. toctree::
-* **Documentation**: Complete API reference and examples
-* **Error Handling**: Comprehensive exception system
-* **Validation**: Built-in parameter validation
-* **Logging**: Configurable logging for debugging
+   :maxdepth: 2
+   :caption: Contents:
+
+   installation
+   quickstart
+   api_reference
    examples
    error_handling
+   configuration
+   troubleshooting
 
 Overview
 --------
@@ -23,32 +26,66 @@ The AskPablos API client is a Python library designed for making web requests th
 * 📸 **Screenshot Capture**: Take high-quality screenshots of web pages
 * ⏱️ **Smart Page Loading**: Wait for complete page load with dynamic content
 * 🎛️ **JavaScript Strategies**: Fine-tuned JS control (DEFAULT, True, False)
-* 🔄 **Multiple HTTP Methods**: Support for GET, POST, PUT, DELETE, and more
+* 🔄 **GET Method Only**: Focused on GET requests for simplicity and reliability
 * 📊 **Query Parameters**: Easy URL parameter handling
 * 🛡️ **Error Handling**: Comprehensive exception handling with specific error types
 * 📋 **Custom Headers**: Full control over request headers
 * 🚀 **High Performance**: Optimized for speed and reliability
-* 📦 **Minimal Dependencies**: Only requires the standard requests library
+* 📝 **Logging Support**: Configurable logging for debugging
 
-Key Components
+Key Features
+-----------
+
+Simple Interface
+~~~~~~~~~~~~~~~
+
+The `AskPablos` class provides a straightforward interface focused on GET requests:
+
+.. code-block:: python
+
+   from askpablos_api import AskPablos
+
+   client = AskPablos(api_key="your_key", secret_key="your_secret")
+   response = client.get("https://example.com")
+
+Advanced Browser Features
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Enable browser automation for JavaScript-heavy sites:
+
+.. code-block:: python
+
+   response = client.get(
+       "https://spa-example.com",
+       browser=True,
+       screenshot=True,
+       wait_for_load=True
+   )
+
+Comprehensive Error Handling
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Robust exception hierarchy for different error scenarios:
+
+.. code-block:: python
+
+   from askpablos_api import AskPablos, AskPablosError
+
+   try:
+       response = client.get("https://example.com")
+   except AskPablosError as e:
+       print(f"API error: {e}")
+
+Getting Started
 --------------
 
-The library consists of several key components:
-
-**AskPablos Class**
-   The main high-level interface for making proxy requests with comprehensive options for browser automation, proxy rotation, and screenshot capture.
-
-**ProxyClient Class**
-   Lower-level client that handles direct communication with the AskPablos API service, supporting all HTTP methods and advanced proxy configurations.
-
-**ResponseData Class**
-   Enhanced response object that provides structured access to response data, including screenshot data and detailed timing information.
-
-**Exception Classes**
-   Comprehensive exception hierarchy for proper error handling and debugging, including parameter validation.
+1. **Installation**: ``pip install askpablos-api``
+2. **Get API credentials** from the AskPablos dashboard
+3. **Initialize the client** with your credentials
+4. **Make your first request**
 
 Quick Example
--------------
+~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -60,64 +97,57 @@ Quick Example
        secret_key="your_secret_key"
    )
 
-   # Simple request
+   # Make a simple request
    response = client.get("https://httpbin.org/ip")
-   print(f"Status: {response.status_code}")
+   print(f"Your IP: {response.content}")
 
-   # Advanced request with browser features
+   # Make a request with browser features
    response = client.get(
-       url="https://spa-example.com",
+       "https://example.com",
        browser=True,
-       wait_for_load=True,
        screenshot=True,
-       js_strategy="DEFAULT",
-       rotate_proxy=True,
-       timeout=45
+       timeout=60
    )
 
-New Features in Latest Version
------------------------------
+   # Save screenshot if available
+   if response.screenshot:
+       with open("screenshot.png", "wb") as f:
+           f.write(response.screenshot)
 
-**Enhanced Browser Support**
-   - Screenshot capture with `screenshot=True`
-   - Page load waiting with `wait_for_load=True`
-   - JavaScript strategy control with `js_strategy` options
+Architecture
+-----------
 
-**Proxy Management**
-   - Automatic proxy rotation with `rotate_proxy=True`
-   - Smart timeout handling for different request types
+The library is structured with these main components:
 
-**Parameter Handling**
-   - URL query parameters support with `params` dictionary
-   - Custom headers support with `headers` dictionary
-   - Additional proxy options via `**options`
+**Core Classes**
+- ``AskPablos``: Main user interface (GET requests only)
+- ``ProxyClient``: Lower-level client with full HTTP method support
+- ``HTTPClient``: HTTP communication handler
 
-**Validation & Error Handling**
-   - Parameter validation for browser-specific features
-   - Enhanced error messages with specific exception types
-   - Improved debugging with detailed response information
+**Data Models**
+- ``ResponseData``: Response container with all response information
+- ``RequestOptions``: Configuration object for request parameters
 
-Getting Started
----------------
+**Authentication & Security**
+- ``AuthManager``: HMAC-SHA256 signature generation
+- ``ParameterValidator``: Request parameter validation
 
-1. :doc:`installation` - Install the library
-2. :doc:`quickstart` - Basic usage and examples
+**Utilities**
+- ``configure_logging``: Logging configuration
+- Exception classes for error handling
 
-* Read the :doc:`quickstart` guide for a quick introduction
-* Check the :doc:`api_reference` for detailed API documentation
-* Review :doc:`examples` for practical usage scenarios
-* Learn about :doc:`error_handling` for robust error management
+Support & Resources
+------------------
 
-Links
------
+* **Documentation**: Complete API reference and examples
+* **Error Handling**: Comprehensive exception system with specific error types
+* **Validation**: Built-in parameter validation with clear error messages
+* **Logging**: Configurable logging for debugging and monitoring
+* **Community**: Active support for developers
 
-* **PyPI**: https://pypi.org/project/askpablos-api/
-* **Documentation**: https://askpablos-api.readthedocs.io/en/latest/
-* **Source Code**: https://github.com/fawadss1/askpablos_api
+Version Information
+------------------
 
-Indices and tables
-==================
+Current version: 0.2.0
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+The library follows semantic versioning principles for stable API evolution.

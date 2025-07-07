@@ -29,135 +29,133 @@ Custom Headers and Parameters
 
    # Request with custom headers and URL parameters
    response = client.get(
-       url="https://api.example.com/search",
-       params={
-           "q": "python",
-           "limit": "10",
-           "page": "1"
-       },
-       headers={
-           "User-Agent": "MyApp/1.0",
-           "Accept": "application/json",
-           "Authorization": "Bearer your-token"
-       }
+       "https://httpbin.org/headers",
+       headers={"User-Agent": "AskPablosBot/1.0"},
+       params={"foo": "bar"}
    )
+   print(response.content)
 
-   print(f"Search results: {response.json}")
+GET Request with Data (Query Parameters)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Browser Mode Examples
---------------------
-
-JavaScript Rendering
-~~~~~~~~~~~~~~~~~~~
+.. note::
+   The AskPablos client only supports the GET method. To send data, use query parameters or custom headers.
 
 .. code-block:: python
 
-   # Render JavaScript-heavy pages
+   # Simulate sending data with a GET request using query parameters
+   params = {"name": "Alice", "age": 30}
    response = client.get(
-       url="https://spa-example.com",
-       browser=True,
-       wait_for_load=True,
-       timeout=45
+       "https://httpbin.org/get",
+       params=params
    )
+   print(response.content)
 
-   print(f"Rendered content: {response.content}")
-
-Taking Screenshots
-~~~~~~~~~~~~~~~~~
+Screenshot Capture
+~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
-   # Capture screenshots of web pages
+   # Capture a screenshot of a web page using the get method
    response = client.get(
-       url="https://example.com",
-       browser=True,
-       screenshot=True,
-       wait_for_load=True
+       "https://example.com",
+       browser=True,  # Required for screenshot
+       screenshot=True
    )
 
+   # Screenshot data is available in the response
    if response.screenshot:
-       with open("page_screenshot.png", "wb") as f:
+       with open("screenshot.png", "wb") as f:
            f.write(response.screenshot)
-       print("Screenshot saved successfully!")
 
-JavaScript Strategy Control
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Browser Automation (JavaScript Rendering)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
-   # Fine-tune JavaScript execution
-
-   # Minimal JavaScript (stealth + basic JS)
+   # Default browser behavior (recommended)
    response = client.get(
-       url="https://protected-site.com",
-       browser=True,
-       js_strategy=True,
-       wait_for_load=True
-   )
-
-   # No JavaScript execution
-   response = client.get(
-       url="https://simple-site.com",
-       browser=True,
-       js_strategy=False
-   )
-
-   # Default strategy (balanced approach)
-   response = client.get(
-       url="https://normal-site.com",
-       browser=True,
+       "https://example.com/dynamic",
+       browser=True,  # Required for js_strategy
        js_strategy="DEFAULT"
    )
 
-Proxy Rotation Examples
-----------------------
-
-Avoiding Rate Limits
-~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: python
-
-   # Use proxy rotation for multiple requests
-   urls = [
-       "https://api.example.com/data/1",
-       "https://api.example.com/data/2",
-       "https://api.example.com/data/3"
-   ]
-
-   results = []
-   for url in urls:
-       response = client.get(
-           url=url,
-           rotate_proxy=True,
-           timeout=30
-       )
-       results.append(response.json)
-       print(f"Fetched data from {url}")
-
-All Browser Features Combined
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: python
-
-   # Use all browser features together
+   # Stealth mode - runs stealth script & minimal JS
    response = client.get(
-       url="https://advanced-webapp.com",
-       browser=True,
-       rotate_proxy=True,
-       wait_for_load=True,
-       screenshot=True,
-       js_strategy="DEFAULT",
-       timeout=45
+       "https://example.com/protected",
+       browser=True,  # Required for js_strategy
+       js_strategy=True
    )
 
-   print(f"Status: {response.status_code}")
-   print(f"Content length: {len(response.content)}")
-   print(f"Request time: {response.elapsed_time}")
+   # No JavaScript - faster for static content
+   response = client.get(
+       "https://example.com/static",
+       browser=True,  # Required for js_strategy
+       js_strategy=False
+   )
 
-   if response.screenshot:
-       with open("webapp_screenshot.png", "wb") as f:
-           f.write(response.screenshot)
-       print("Screenshot captured and saved!")
+   print(response.content)
+
+Waiting for Page Load
+~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   # Wait for page to fully load before capturing content
+   response = client.get(
+       "https://example.com/slow-loading",
+       browser=True,  # Required for wait_for_load
+       wait_for_load=True
+   )
+   print(response.content)
+
+Error Handling Example
+---------------------
+
+.. code-block:: python
+
+   from askpablos_api import AskPablos, AskPablosError
+
+   try:
+       client = AskPablos(api_key="bad", secret_key="bad")
+       client.get("https://httpbin.org/ip")
+   except AskPablosError as e:
+       print(f"API error: {e}")
+
+Configuration Example
+---------------------
+
+.. code-block:: python
+
+   # Basic client configuration with custom timeout
+   client = AskPablos(
+       api_key="your_api_key",
+       secret_key="your_secret_key"
+   )
+
+   # Set timeout per request
+   response = client.get(
+       "https://example.com",
+       timeout=45  # Custom timeout in seconds
+   )
+
+   # Using environment variables for configuration
+   import os
+
+   client = AskPablos(
+       api_key=os.getenv("ASKPABLOS_API_KEY"),
+       secret_key=os.getenv("ASKPABLOS_SECRET_KEY")
+   )
+
+   # Configure browser options for consistent behavior
+   default_browser_options = {
+       "browser": True,
+       "wait_for_load": True,
+       "js_strategy": "DEFAULT",
+       "timeout": 60
+   }
+
+   response = client.get("https://example.com", **default_browser_options)
 
 Advanced Use Cases
 ------------------
@@ -197,43 +195,32 @@ E-commerce Product Scraping
 
        print(f"Product {i+1} scraped successfully")
 
-API Testing with Different Methods
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+API Testing with GET Requests Only
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note::
+   The AskPablos client only supports GET requests. For other HTTP methods, you would need to use the lower-level ProxyClient directly.
 
 .. code-block:: python
 
-   from askpablos_api import ProxyClient
-
-   # Use ProxyClient for more control
-   client = ProxyClient(
-       api_key="your_api_key",
-       secret_key="your_secret_key",
-       api_url="https://api.askpablos.com/proxy"
-   )
-
-   # Test different HTTP methods
+   # Only GET requests are supported with AskPablos client
    test_cases = [
        {
-           "method": "GET",
            "url": "https://httpbin.org/get",
            "params": {"test": "param"}
        },
        {
-           "method": "POST",
-           "url": "https://httpbin.org/post",
-           "data": {"key": "value"}
+           "url": "https://httpbin.org/anything",
+           "params": {"foo": "bar"}
        }
    ]
 
    for test in test_cases:
-       response = client.request(
-           method=test["method"],
-           url=test["url"],
-           data=test.get("data"),
-           params=test.get("params"),
-           options={"rotate_proxy": True}
+       response = client.get(
+           test["url"],
+           params=test.get("params")
        )
-       print(f"{test['method']} request: {response.status_code}")
+       print(f"GET request to {test['url']}: {response.status_code}")
 
 Error Handling Examples
 ----------------------
@@ -293,7 +280,7 @@ Parameter Validation
 
 .. code-block:: python
 
-   # This demonstrates parameter validation
+   # This demonstrates parameter validation for browser dependencies
    def make_browser_request(url, take_screenshot=False):
        """Example of proper parameter usage."""
 
@@ -301,9 +288,10 @@ Parameter Validation
        if take_screenshot:
            response = client.get(
                url=url,
-               browser=True,  # Required for screenshot
-               screenshot=True,
-               wait_for_load=True
+               browser=True,      # Required for all browser features
+               screenshot=True,   # Requires browser=True
+               wait_for_load=True,# Requires browser=True
+               js_strategy="DEFAULT"  # Requires browser=True
            )
        else:
            response = client.get(
@@ -314,15 +302,45 @@ Parameter Validation
 
        return response
 
-   # This would raise ValueError
+   # These would all raise ValueError because browser=False
    try:
+       # Error: wait_for_load requires browser=True
        response = client.get(
            url="https://example.com",
-           browser=False,  # Browser disabled
-           screenshot=True  # But screenshot requested
+           browser=False,
+           wait_for_load=True
        )
    except ValueError as e:
        print(f"Parameter error: {e}")
+
+   try:
+       # Error: screenshot requires browser=True
+       response = client.get(
+           url="https://example.com",
+           browser=False,
+           screenshot=True
+       )
+   except ValueError as e:
+       print(f"Parameter error: {e}")
+
+   try:
+       # Error: js_strategy requires browser=True
+       response = client.get(
+           url="https://example.com",
+           browser=False,
+           js_strategy=True
+       )
+   except ValueError as e:
+       print(f"Parameter error: {e}")
+
+   # Correct usage - all browser features together
+   response = client.get(
+       url="https://example.com",
+       browser=True,           # Required for all below features
+       wait_for_load=True,     # Browser feature
+       screenshot=True,        # Browser feature
+       js_strategy="DEFAULT"   # Browser feature
+   )
 
 Performance Optimization
 -----------------------

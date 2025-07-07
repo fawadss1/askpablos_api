@@ -9,6 +9,7 @@ Separating validation logic improves code clarity and reusability.
 """
 
 from typing import Dict, Any, Optional
+from .exceptions import ConfigurationError
 
 
 class ParameterValidator:
@@ -30,6 +31,11 @@ class ParameterValidator:
         """
         Validate that browser-dependent features are only used with browser=True.
 
+        The following parameters require browser=True to function:
+        - wait_for_load: Requires browser automation to detect page load completion
+        - screenshot: Requires browser automation to capture page screenshots
+        - js_strategy: Requires browser automation to execute JavaScript strategies
+
         Args:
             browser: Whether browser mode is enabled
             wait_for_load: Whether page load waiting is requested
@@ -37,12 +43,12 @@ class ParameterValidator:
             js_strategy: JavaScript execution strategy
 
         Raises:
-            ValueError: If browser features are requested without browser=True
+            ConfigurationError: If browser features are requested without browser=True
         """
         if browser:
             return  # All features are valid when browser is enabled
 
-        # Collect invalid features
+        # Collect invalid features that require browser=True
         invalid_features = []
 
         if wait_for_load:
@@ -51,12 +57,11 @@ class ParameterValidator:
         if screenshot:
             invalid_features.append("screenshot=True")
 
-        if js_strategy != "DEFAULT":
-            invalid_features.append(f"js_strategy={js_strategy}")
-
         if invalid_features:
             features_str = ", ".join(invalid_features)
-            raise ValueError(f"browser=True is required for these actions: {features_str}")
+            raise ConfigurationError(
+                f"CONFIGURATION ERROR: browser=True is required when using: {features_str}."
+            )
 
     @staticmethod
     def validate_url(url: str) -> None:
@@ -122,67 +127,6 @@ class ParameterValidator:
             if not isinstance(value, str):
                 raise ValueError(f"Header value must be string, got {type(value)}")
 
-    @staticmethod
-    def validate_params(params: Optional[Dict[str, str]]) -> None:
-        """
-        Validate query parameters.
-
-        Args:
-            params: Query parameters dictionary to validate
-
-        Raises:
-            ValueError: If parameters are invalid
-        """
-        if params is None:
-            return
-
-        if not isinstance(params, dict):
-            raise ValueError("Parameters must be a dictionary")
-
-        for key, value in params.items():
-            if not isinstance(key, str):
-                raise ValueError(f"Parameter key must be string, got {type(key)}")
-            if not isinstance(value, str):
-                raise ValueError(f"Parameter value must be string, got {type(value)}")
-
-    @staticmethod
-    def validate_js_strategy(js_strategy: Any) -> None:
-        """
-        Validate JavaScript strategy parameter.
-
-        Args:
-            js_strategy: JavaScript strategy to validate
-
-        Raises:
-            ValueError: If js_strategy is invalid
-        """
-        valid_strategies = ["DEFAULT", True, False]
-
-        if js_strategy not in valid_strategies:
-            valid_str = ", ".join(str(s) for s in valid_strategies)
-            raise ValueError(f"js_strategy must be one of: {valid_str}")
-
-    @staticmethod
-    def validate_method(method: str) -> None:
-        """
-        Validate HTTP method.
-
-        Args:
-            method: HTTP method to validate
-
-        Raises:
-            ValueError: If method is invalid
-        """
-        if not isinstance(method, str):
-            raise ValueError("HTTP method must be a string")
-
-        valid_methods = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
-        method_upper = method.upper()
-
-        if method_upper not in valid_methods:
-            valid_str = ", ".join(valid_methods)
-            raise ValueError(f"HTTP method must be one of: {valid_str}")
-
     @classmethod
     def validate_request_params(
             cls,
@@ -216,10 +160,7 @@ class ParameterValidator:
             ValueError: If any parameter is invalid
         """
         cls.validate_url(url)
-        cls.validate_method(method)
         cls.validate_headers(headers)
-        cls.validate_params(params)
-        cls.validate_js_strategy(js_strategy)
         cls.validate_timeout(timeout)
         cls.validate_browser_dependencies(
             browser=browser,

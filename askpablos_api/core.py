@@ -8,13 +8,13 @@ for making GET requests through the AskPablos proxy service. The client handles
 authentication, error management, and request formatting automatically.
 """
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 import logging
 
 from .http import ProxyClient
 from .models import ResponseData
 from .validators import ParameterValidator
-from .exceptions import AskPablosError
+from .exceptions import AskPablosError, ConfigurationError
 
 logger = logging.getLogger("askpablos_api")
 
@@ -62,7 +62,7 @@ class AskPablos:
             rotate_proxy: bool = False,
             wait_for_load: bool = False,
             screenshot: bool = False,
-            js_strategy: str = "DEFAULT",
+            js_strategy: Optional[Union[bool, str]] = None,
             timeout: int = 30,
             **options
     ) -> ResponseData:
@@ -92,7 +92,7 @@ class AskPablos:
                                        Options: True (stealth script & minimal JS),
                                        False (no stealth injection, no JS rendering),
                                        "DEFAULT" (follows our techniques).
-                                       Requires browser=True. Defaults to "DEFAULT".
+                                       Requires browser=True. Defaults to None.
             timeout (int, optional): Request timeout in seconds. Defaults to 30.
             **options: Additional proxy options like user_agent, cookies, etc.
 
@@ -111,8 +111,15 @@ class AskPablos:
             APIConnectionError: If the client cannot connect to the AskPablos API.
             ResponseError: If the API returns an error status code.
             AuthenticationError: If authentication fails.
-            ValueError: If browser-specific options are used without browser=True.
+            ConfigurationError: If there is a configuration issue with the request.
         """
+        # Set default value for js_strategy if not provided
+        if js_strategy is None:
+            js_strategy = "DEFAULT"
+            js_strategy_explicitly_set = False
+        else:
+            js_strategy_explicitly_set = True
+
         # Validate browser-specific options using the validator
         self.validator.validate_browser_dependencies(
             browser=browser,
@@ -120,6 +127,12 @@ class AskPablos:
             screenshot=screenshot,
             js_strategy=js_strategy
         )
+
+        # Additional validation for js_strategy when explicitly set
+        if not browser and js_strategy_explicitly_set:
+            raise ConfigurationError(
+                f"browser=True is required when using: js_strategy='{js_strategy}'. "
+            )
 
         # Build proxy options
         proxy_options = {

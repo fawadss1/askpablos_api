@@ -107,7 +107,6 @@ For JavaScript-heavy websites, enable browser mode:
 
    # Enable browser mode for JavaScript rendering
    response = client.get(
-       url="https://example.com/spa-app",
        url="https://example-spa.com",
        browser=True,
        wait_for_load=True,
@@ -141,11 +140,27 @@ The browser mode supports several advanced features:
 
 .. code-block:: python
 
-   # Control JavaScript execution
+   # Default strategy - optimized browser behavior (recommended)
    response = client.get(
        url="https://example.com",
        browser=True,
-       js_strategy="DEFAULT",  # Options: "DEFAULT", True, False
+       js_strategy="DEFAULT",  # Full JavaScript support
+       wait_for_load=True
+   )
+
+   # Stealth mode - runs stealth script & minimal JS
+   response = client.get(
+       url="https://protected-site.com",
+       browser=True,
+       js_strategy=True,  # Bypasses bot detection
+       wait_for_load=True
+   )
+
+   # No JavaScript - fastest performance
+   response = client.get(
+       url="https://static-content.com",
+       browser=True,
+       js_strategy=False,  # No JS execution
        wait_for_load=True
    )
 

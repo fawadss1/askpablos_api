@@ -31,7 +31,7 @@ To install a specific version:
 
 .. code-block:: bash
 
-   pip install askpablos-api==0.1.0
+   pip install askpablos-api==0.2.0
 
 To upgrade to the latest version:
 
@@ -244,7 +244,7 @@ Using Docker for isolated deployment:
 
 .. code-block:: text
 
-   askpablos-api>=0.1.0
+   askpablos-api>=0.2.0
    python-dotenv>=0.19.0
 
 **docker-compose.yml:**

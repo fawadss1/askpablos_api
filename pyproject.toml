@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "askpablos-api"
-version = "0.1.0"
+version = "0.2.0"
 description = "Professional Python client for the AskPablos proxy API service"
 readme = "README.md"
 license = { text = "MIT" }

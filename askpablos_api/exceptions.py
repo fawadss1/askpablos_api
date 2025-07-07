@@ -86,3 +86,15 @@ class RequestTimeoutError(AskPablosError):
     This exception indicates that the operation exceeded the allowed time limit.
     """
     pass
+
+
+class ConfigurationError(AskPablosError):
+    """
+    Raised when there is a configuration problem with request parameters.
+
+    This exception is raised when:
+    - Browser-specific features are used without browser=True
+    - Invalid parameter combinations are detected
+    - Required dependencies between parameters are not met
+    """
+    pass

@@ -25,13 +25,15 @@ from .exceptions import (
     AskPablosError,
     AuthenticationError,
     APIConnectionError,
-    ResponseError
+    RequestTimeoutError,
+    ResponseError,
+    ConfigurationError
 )
 
 # Utility functions
 from .utils import configure_logging
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 # Main public API - what most users will import
 __all__ = [
@@ -52,7 +54,9 @@ __all__ = [
     "AskPablosError",
     "AuthenticationError",
     "APIConnectionError",
+    "RequestTimeoutError",
     "ResponseError",
+    "ConfigurationError",
 
     # Utilities
     "configure_logging",
