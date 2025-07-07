@@ -77,3 +77,12 @@ class ResponseError(AskPablosError):
         self.status_code = status_code
         self.message = message
         super().__init__(f"API response error (status {status_code}): {message}")
+
+
+class RequestTimeoutError(AskPablosError):
+    """
+    Exception raised when a request to the AskPablos API times out.
+
+    This exception indicates that the operation exceeded the allowed time limit.
+    """
+    pass

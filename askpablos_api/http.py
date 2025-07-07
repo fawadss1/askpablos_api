@@ -16,7 +16,7 @@ from typing import Dict, Optional, Any
 from .auth import AuthManager
 from .models import ResponseData, RequestOptions
 from .validators import ParameterValidator
-from .exceptions import APIConnectionError, ResponseError
+from .exceptions import APIConnectionError, ResponseError, RequestTimeoutError
 from .config import DEFAULT_API_URL
 
 
@@ -104,6 +104,10 @@ class HTTPClient:
 
             # Parse and return the response
             return self._parse_response(response)
+
+        except requests.Timeout as e:
+            raise RequestTimeoutError("The request to the AskPablos server timed out. "
+                                      "Please check your network connection or try increasing the timeout setting.") from e
 
         except requests.RequestException as e:
             raise APIConnectionError("Failed to connect to the askpablos server it may be down or unreachable "
