@@ -11,10 +11,10 @@ authentication, error management, and request formatting automatically.
 from typing import Dict, Optional
 import logging
 
-from .client import ProxyClient, ResponseData
-from .utils import build_proxy_options
+from .http import ProxyClient
+from .models import ResponseData
+from .validators import ParameterValidator
 from .exceptions import AskPablosError
-from .config import DEFAULT_API_URL
 
 logger = logging.getLogger("askpablos_api")
 
@@ -32,7 +32,6 @@ class AskPablos:
 
     Attributes:
         client (ProxyClient): The underlying client for making API requests.
-
     """
 
     def __init__(self, api_key: str, secret_key: str):
@@ -51,7 +50,8 @@ class AskPablos:
             AuthenticationError: If any of the required credentials are missing
                                 or invalid.
         """
-        self.client = ProxyClient(api_key, secret_key, DEFAULT_API_URL)
+        self.client = ProxyClient(api_key, secret_key)
+        self.validator = ParameterValidator()
 
     def get(
             self,
@@ -100,12 +100,12 @@ class AskPablos:
             ResponseData: The response object from the API containing:
                 - status_code (int): HTTP status code from the target server
                 - headers (Dict[str, str]): Response headers from target server
-                - content (str): Response body/content
+                - content (bytes): Response body/content
                 - url (str): Final URL after any redirects
-                - elapsed_time (float): Time taken to complete the request in seconds
+                - elapsed_time (str): Time taken to complete the request
                 - encoding (Optional[str]): Response text encoding
                 - json (Optional[Dict[str, Any]]): Parsed JSON data if available
-                - screenshot (Optional[str]): Base64 encoded screenshot if requested
+                - screenshot (Optional[bytes]): Screenshot data if requested
 
         Raises:
             APIConnectionError: If the client cannot connect to the AskPablos API.
@@ -113,31 +113,32 @@ class AskPablos:
             AuthenticationError: If authentication fails.
             ValueError: If browser-specific options are used without browser=True.
         """
-        # Validate browser-specific options
-        if not browser and (wait_for_load or screenshot or js_strategy != "DEFAULT"):
-            browser_features = []
-            if wait_for_load:
-                browser_features.append("wait_for_load=True")
-            if screenshot:
-                browser_features.append("screenshot=True")
-            if js_strategy != "DEFAULT":
-                browser_features.append("js_strategy=True")
-
-            features_str = ", ".join(browser_features)
-            raise ValueError(f"browser=True is required for these actions: {features_str}")
-
-        # Build proxy options
-        proxy_options = build_proxy_options(
+        # Validate browser-specific options using the validator
+        self.validator.validate_browser_dependencies(
             browser=browser,
-            rotate_proxy=rotate_proxy,
             wait_for_load=wait_for_load,
             screenshot=screenshot,
-            js_strategy=js_strategy,
-            **options
+            js_strategy=js_strategy
         )
 
+        # Build proxy options
+        proxy_options = {
+            "browser": browser,
+            "rotate_proxy": rotate_proxy,
+            "wait_for_load": wait_for_load,
+            "screenshot": screenshot,
+            "js_strategy": js_strategy,
+            **options
+        }
+
         try:
-            return self.client.request(url=url, headers=headers, params=params, options=proxy_options, timeout=timeout)
+            return self.client.request(
+                url=url,
+                headers=headers,
+                params=params,
+                options=proxy_options,
+                timeout=timeout
+            )
         except AskPablosError as e:
-            logger.error(f"GET request failed: {str(e)}")
+            logger.error(str(e))
             raise

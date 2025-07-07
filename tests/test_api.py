@@ -1,12 +1,11 @@
 """
-Simple test file for AskPablos API package.
+Test suite for the AskPablos API client.
 
 This file demonstrates how to use the AskPablos API client to make real requests.
 Replace the placeholder credentials with your actual API keys to test.
 """
 
 from askpablos_api import AskPablos
-import json
 
 
 def test_basic_get_request():
@@ -21,13 +20,19 @@ def test_basic_get_request():
 
     try:
         # Simple GET request
-        response = client.get("https://httpbin.org/ip", browser=True, )
-        print(response.elapsed_time)
-        print("-" * 50)
+        for u in range(0, 1000):
+            url = f"https://httpbin.org/ip?no={u}"
+            print(url)
+            response = client.get(url, browser=True, rotate_proxy=True)
+            print(response.elapsed_time, response.json.get('sid'))
+            print('--' * 50)
+
+            # with open('scc.png', "wb") as sc:
+            #     sc.write(response.screenshot)
+            #     print("-" * 50)
         return True
     except Exception as e:
-        print(e)
-        return False
+        pass
 
 
 test_basic_get_request()
