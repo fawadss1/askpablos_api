@@ -35,21 +35,52 @@ Custom Headers and Parameters
    )
    print(response.content)
 
-GET Request with Data (Query Parameters)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Query Parameters
+~~~~~~~~~~~~~~~~
 
 .. note::
-   The AskPablos client only supports the GET method. To send data, use query parameters or custom headers.
+   The AskPablos client only supports GET requests. Use query parameters to pass data to the target URL.
 
 .. code-block:: python
 
-   # Simulate sending data with a GET request using query parameters
-   params = {"name": "Alice", "age": 30}
+   # Pass parameters as query string
+   params = {"name": "Alice", "age": "30"}
    response = client.get(
        "https://httpbin.org/get",
        params=params
    )
    print(response.content)
+
+Timeout Configuration Examples
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   # Quick timeout for fast APIs
+   response = client.get(
+       "https://api.example.com/status",
+       timeout=5  # 5 seconds timeout
+   )
+
+   # Standard timeout for web pages
+   response = client.get(
+       "https://example.com",
+       timeout=30  # 30 seconds (default)
+   )
+
+   # Extended timeout for slow sites
+   response = client.get(
+       "https://slow-loading-site.com",
+       timeout=120  # 2 minutes timeout
+   )
+
+   # Browser mode with custom timeout
+   response = client.get(
+       "https://spa-app.com",
+       browser=True,
+       wait_for_load=True,
+       timeout=90  # 90 seconds for JavaScript rendering
+   )
 
 Screenshot Capture
 ~~~~~~~~~~~~~~~~~~
@@ -71,27 +102,29 @@ Screenshot Capture
 Browser Automation (JavaScript Rendering)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+When browser=True is enabled, all browser-specific parameters (js_strategy, wait_for_load, screenshot) are always sent to the API server with their explicit values, ensuring precise control over browser behavior.
+
 .. code-block:: python
 
    # Default browser behavior (recommended)
    response = client.get(
        "https://example.com/dynamic",
        browser=True,  # Required for js_strategy
-       js_strategy="DEFAULT"
+       js_strategy="DEFAULT"  # Always sent when browser=True
    )
 
    # Stealth mode - runs stealth script & minimal JS
    response = client.get(
        "https://example.com/protected",
        browser=True,  # Required for js_strategy
-       js_strategy=True
+       js_strategy=True  # Always sent when browser=True
    )
 
    # No JavaScript - faster for static content
    response = client.get(
        "https://example.com/static",
        browser=True,  # Required for js_strategy
-       js_strategy=False
+       js_strategy=False  # Always sent when browser=True
    )
 
    print(response.content)
@@ -99,14 +132,24 @@ Browser Automation (JavaScript Rendering)
 Waiting for Page Load
 ~~~~~~~~~~~~~~~~~~~~~
 
+The wait_for_load parameter is always sent to the API when browser=True, ensuring the server knows your exact preference.
+
 .. code-block:: python
 
    # Wait for page to fully load before capturing content
    response = client.get(
        "https://example.com/slow-loading",
        browser=True,  # Required for wait_for_load
-       wait_for_load=True
+       wait_for_load=True  # Always sent when browser=True
    )
+
+   # Don't wait for page load (faster for simple pages)
+   response = client.get(
+       "https://example.com/fast-loading",
+       browser=True,  # Required
+       wait_for_load=False  # Always sent when browser=True
+   )
+
    print(response.content)
 
 Error Handling Example

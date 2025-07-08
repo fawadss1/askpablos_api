@@ -98,6 +98,64 @@ Adding Custom Headers and Parameters
        }
    )
 
+Request Timeouts
+---------------
+
+The AskPablos API client supports configurable timeouts for requests. The timeout parameter controls how long the server will wait for the target website to respond before timing out.
+
+**Basic Timeout Configuration**
+
+.. code-block:: python
+
+   # Set a custom timeout (default is 30 seconds)
+   response = client.get(
+       url="https://slow-website.com",
+       timeout=60  # Wait up to 60 seconds
+   )
+
+**Timeout for Different Use Cases**
+
+.. code-block:: python
+
+   # Quick timeout for fast APIs
+   response = client.get(
+       url="https://api.example.com/health",
+       timeout=10  # 10 seconds should be enough for API calls
+   )
+
+   # Longer timeout for complex web scraping
+   response = client.get(
+       url="https://heavy-website.com",
+       browser=True,
+       wait_for_load=True,
+       timeout=120  # 2 minutes for complex JavaScript rendering
+   )
+
+   # Very long timeout for data processing endpoints
+   response = client.get(
+       url="https://data-processor.com/generate-report",
+       timeout=300  # 5 minutes for heavy data processing
+   )
+
+**Timeout Error Handling**
+
+.. code-block:: python
+
+   from askpablos_api.exceptions import RequestTimeoutError
+
+   try:
+       response = client.get(
+           url="https://slow-website.com",
+           timeout=30
+       )
+   except RequestTimeoutError as e:
+       print(f"Request timed out: {e}")
+       # Handle timeout by retrying with longer timeout
+       response = client.get(
+           url="https://slow-website.com",
+           timeout=60
+       )
+
 Using Browser Mode
 -----------------
 

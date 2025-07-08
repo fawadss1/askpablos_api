@@ -43,7 +43,6 @@ class HTTPClient:
             self,
             url: str,
             method: str = "GET",
-            data: Optional[Dict[str, Any]] = None,
             headers: Optional[Dict[str, str]] = None,
             params: Optional[Dict[str, str]] = None,
             options: Optional[RequestOptions] = None
@@ -54,7 +53,6 @@ class HTTPClient:
         Args:
             url: Target URL to fetch through the proxy
             method: HTTP method (GET, POST, etc.)
-            data: Request payload for POST/PUT requests
             headers: Custom headers for the target request
             params: Query parameters for the target URL
             options: Request options and proxy settings
@@ -76,7 +74,6 @@ class HTTPClient:
         request_data = self._build_request_payload(
             url=url,
             method=method,
-            data=data,
             headers=headers,
             params=params,
             options=options
@@ -117,7 +114,6 @@ class HTTPClient:
     def _build_request_payload(
             url: str,
             method: str,
-            data: Optional[Dict[str, Any]],
             headers: Optional[Dict[str, str]],
             params: Optional[Dict[str, str]],
             options: RequestOptions
@@ -128,7 +124,6 @@ class HTTPClient:
         Args:
             url: Target URL
             method: HTTP method
-            data: Request data
             headers: Custom headers
             params: Query parameters
             options: Request options
@@ -141,19 +136,16 @@ class HTTPClient:
             "method": method.upper(),
             "browser": options.browser,
             "rotateProxy": options.rotate_proxy,
-            "data": data if data else None,
+            "timeout": options.timeout,
             "headers": headers if headers else None,
             "params": params if params else None,
         }
 
         # Add browser-specific options if browser is enabled
         if options.browser:
-            if options.wait_for_load:
-                request_data["waitForLoad"] = options.wait_for_load
-            if options.screenshot:
-                request_data["screenshot"] = options.screenshot
-            if options.js_strategy != "DEFAULT":
-                request_data["jsStrategy"] = options.js_strategy
+            request_data["waitForLoad"] = options.wait_for_load
+            request_data["screenshot"] = options.screenshot
+            request_data["jsStrategy"] = options.js_strategy
 
         # Add any additional options
         request_data.update(options.additional_options)
@@ -241,7 +233,6 @@ class ProxyClient:
             self,
             url: str,
             method: str = "GET",
-            data: Optional[Dict[str, Any]] = None,
             headers: Optional[Dict[str, str]] = None,
             params: Optional[Dict[str, str]] = None,
             options: Optional[Dict[str, Any]] = None,
@@ -250,13 +241,17 @@ class ProxyClient:
         """
         Send a request through the AskPablos proxy.
 
+        When browser mode is enabled (browser=True), all browser-specific parameters
+        (wait_for_load, screenshot, js_strategy) are always sent to the API server
+        with their explicit values, ensuring precise control over browser behavior.
+
         Args:
             url: Target URL to fetch through the proxy
             method: HTTP method (GET, POST, PUT, DELETE, etc.)
-            data: Request payload for POST/PUT requests
             headers: Custom headers to send to the target URL
             params: Query parameters to append to the target URL
-            options: Proxy-specific options for request processing
+            options: Proxy-specific options for request processing. When browser=True
+                    is included, all browser-specific options are sent to the API.
             timeout: Request timeout in seconds
 
         Returns:
@@ -296,7 +291,6 @@ class ProxyClient:
         return self.http_client.send_request(
             url=url,
             method=method,
-            data=data,
             headers=headers,
             params=params,
             options=request_options

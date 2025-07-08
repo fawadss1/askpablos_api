@@ -73,26 +73,36 @@ class AskPablos:
         the AskPablos proxy service. It supports various options for customizing
         the request behavior.
 
+        When browser=True is enabled, all browser-specific parameters (wait_for_load,
+        screenshot, js_strategy) are always sent to the API server with their
+        explicit values, ensuring precise control over browser behavior.
+
         Args:
             url (str): The target URL to fetch. Must be a valid HTTP/HTTPS URL.
             params (Dict[str, str], optional): URL query parameters to append.
                                              Example: {"page": "1", "limit": "10"}
             headers (Dict[str, str], optional): Custom headers for the request.
             browser (bool, optional): Whether to use browser automation for
-                                    JavaScript rendering. Useful for SPAs and
-                                    dynamic content. Defaults to False.
+                                    JavaScript rendering. When True, all browser-specific
+                                    parameters are sent to the API. Defaults to False.
             rotate_proxy (bool, optional): Whether to use proxy rotation for this
                                          request. Helps avoid rate limiting.
                                          Defaults to False.
             wait_for_load (bool, optional): Whether to wait for page load completion.
-                                          Requires browser=True. Defaults to False.
+                                          Requires browser=True. When browser=True,
+                                          this parameter is always sent to the API.
+                                          Defaults to False.
             screenshot (bool, optional): Whether to take a screenshot of the page.
-                                       Requires browser=True. Defaults to False.
+                                       Requires browser=True. When browser=True,
+                                       this parameter is always sent to the API.
+                                       Defaults to False.
             js_strategy (str|bool, optional): JavaScript execution strategy when using browser.
                                        Options: True (stealth script & minimal JS),
                                        False (no stealth injection, no JS rendering),
                                        "DEFAULT" (follows our techniques).
-                                       Requires browser=True. Defaults to None.
+                                       Requires browser=True. When browser=True,
+                                       this parameter is always sent to the API.
+                                       Defaults to None.
             timeout (int, optional): Request timeout in seconds. Defaults to 30.
             **options: Additional proxy options like user_agent, cookies, etc.
 
