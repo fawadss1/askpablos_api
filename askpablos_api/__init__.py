@@ -33,7 +33,7 @@ from .exceptions import (
 # Utility functions
 from .utils import configure_logging
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 # Main public API - what most users will import
 __all__ = [
