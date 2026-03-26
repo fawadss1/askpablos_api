@@ -4,40 +4,109 @@
 [![PyPI Downloads](https://img.shields.io/pypi/dm/askpablos-api.svg)](https://pypi.org/project/askpablos-api/)
 [![Supported Python Versions](https://img.shields.io/pypi/pyversions/askpablos-api.svg)](https://pypi.org/project/askpablos-api/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-[![GitHub Stars](https://img.shields.io/github/stars/fawadss1/askpablos_api.svg)](https://github.com/fawadss1/askpablos_api/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/fawadss1/askpablos_api.svg)](https://github.com/fawadss1/askpablos_api/issues)
-[![GitHub Last Commit](https://img.shields.io/github/last-commit/fawadss1/askpablos_api.svg)](https://github.com/fawadss1/askpablos_api/commits)
 
-A professional Python client library for making GET requests through the AskPablos proxy API service. This library provides a clean, secure, and easy-to-use interface for fetching web pages and APIs through the AskPablos proxy infrastructure with rotating IP addresses and advanced browser automation support.
+A Python client for making GET requests through the AskPablos proxy service with browser automation support.
 
-## Documentation
+**Documentation**: [https://askpablos-api.readthedocs.io/](https://askpablos-api.readthedocs.io/)
 
-Full documentation is available at: [https://askpablos-api.readthedocs.io/en/latest/](https://askpablos-api.readthedocs.io/en/latest/)
+## Features
 
-## Key Features
-
-- 🔐 **Secure Authentication**: HMAC-SHA256 signature-based authentication
-- 🌐 **Proxy Support**: Route requests through rotating proxies
-- 🤖 **Browser Automation**: Full browser support with JavaScript rendering
-- 📸 **Screenshot Capture**: Take screenshots of web pages
-- ⏱️ **Page Load Waiting**: Wait for complete page load with dynamic content
-- 🎛️ **JavaScript Strategies**: Stealth, standard, and no-JS options
-- 🛡️ **Error Handling**: Comprehensive exception handling with specific error types
-- 📊 **Logging**: Built-in logging support for debugging and monitoring
-- 🎯 **Simple Interface**: GET-only requests for clean and focused API
-- 🚀 **High Performance**: Optimized for speed and reliability
-- 📦 **Zero Dependencies**: Only requires the standard `requests` library
+- **Secure Authentication** — HMAC-SHA256 signature-based
+- **Browser Automation** — JavaScript rendering with `browser=True`
+- **Browser Operations** — Wait for elements with `waitForElement` before capturing HTML
+- **Screenshot Capture** — `screenshot=True`
+- **Error Handling** — Specific exception types for each failure mode
 
 ## Installation
 
 ```bash
 pip install askpablos-api
+
+# With lxml for HTML/XPath parsing
+pip install "askpablos-api[parsing]"
+```
+
+## Quick Start
+
+```python
+from askpablos_api import AskPablos
+
+client = AskPablos(
+    api_key="your_api_key",
+    secret_key="your_secret_key"
+)
+
+# Simple request
+response = client.get("https://httpbin.org/ip")
+print(response.content)
+```
+
+## Browser Mode & HTML Parsing
+
+For JavaScript-rendered pages, use `browser=True` with `operations` to wait for
+content before capturing. Use `lxml` to parse the HTML.
+
+```python
+from lxml import etree
+
+response = client.get(
+    url="https://example.com/catalog",
+    browser=True,
+    operations=[{
+        "task": "waitForElement",
+        "match": {
+            "on": "xpath",
+            "rule": "visible",
+            "value": "//ul[@class='prod_list']"
+        }
+    }],
+    timeout=45
+)
+
+dom = etree.HTML(response.content)
+for li in dom.xpath("//ul[@class='prod_list']/li"):
+    name = li.xpath(".//span[@class='pr_title']/text()")
+    print(name[0].strip() if name else "")
+```
+
+## Screenshot
+
+```python
+response = client.get(
+    url="https://example.com",
+    browser=True,
+    screenshot=True
+)
+
+if response.screenshot:
+    with open("screenshot.png", "wb") as f:
+        f.write(response.screenshot)
+```
+
+## Error Handling
+
+```python
+from askpablos_api import (
+    AuthenticationError,
+    APIConnectionError,
+    RequestTimeoutError,
+    ResponseError
+)
+
+try:
+    response = client.get("https://example.com", timeout=30)
+except AuthenticationError as e:
+    print(f"Auth failed: {e}")
+except APIConnectionError as e:
+    print(f"Connection error: {e}")
+except RequestTimeoutError as e:
+    print(f"Timed out: {e}")
+except ResponseError as e:
+    print(f"HTTP error: {e}")
 ```
 
 ## Development
-
-### Setting up for Development
 
 ```bash
 git clone https://github.com/fawadss1/askpablos_api.git
@@ -47,23 +116,9 @@ pip install -e ".[dev]"
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE) for details.
 
 ## Support
 
-For support and questions:
-
 - **Email**: fawadstar6@gmail.com
-- **Documentation**: [https://askpablos-api.readthedocs.io/](https://askpablos-api.readthedocs.io/)
-- **Issues**: Please report bugs and feature requests at [GitHub Issues](https://github.com/fawadss1/askpablos_api/issues)
-
-## Changelog
-
-### v0.2.0 (Current)
-
-- Initial release
-- HMAC-SHA256 authentication
-- GET request support through proxy service
-- Comprehensive error handling
-- Built-in logging support
-- Browser integration for JavaScript-heavy sites
+- **Issues**: [GitHub Issues](https://github.com/fawadss1/askpablos_api/issues)
