@@ -59,11 +59,10 @@ class AskPablos:
             params: Optional[Dict[str, str]] = None,
             headers: Optional[Dict[str, str]] = None,
             browser: bool = False,
-            rotate_proxy: bool = False,
-            wait_for_load: bool = False,
             screenshot: bool = False,
-            js_strategy: Optional[Union[bool, str]] = None,
+            operations: Optional[list] = None,
             timeout: int = 30,
+            max_retries: int = 3,
             **options
     ) -> ResponseData:
         """
@@ -73,38 +72,22 @@ class AskPablos:
         the AskPablos proxy service. It supports various options for customizing
         the request behavior.
 
-        When browser=True is enabled, all browser-specific parameters (wait_for_load,
-        screenshot, js_strategy) are always sent to the API server with their
-        explicit values, ensuring precise control over browser behavior.
-
         Args:
             url (str): The target URL to fetch. Must be a valid HTTP/HTTPS URL.
             params (Dict[str, str], optional): URL query parameters to append.
                                              Example: {"page": "1", "limit": "10"}
             headers (Dict[str, str], optional): Custom headers for the request.
             browser (bool, optional): Whether to use browser automation for
-                                    JavaScript rendering. When True, all browser-specific
-                                    parameters are sent to the API. Defaults to False.
-            rotate_proxy (bool, optional): Whether to use proxy rotation for this
-                                         request. Helps avoid rate limiting.
-                                         Defaults to False.
-            wait_for_load (bool, optional): Whether to wait for page load completion.
-                                          Requires browser=True. When browser=True,
-                                          this parameter is always sent to the API.
-                                          Defaults to False.
+                                    JavaScript rendering. Defaults to False.
             screenshot (bool, optional): Whether to take a screenshot of the page.
-                                       Requires browser=True. When browser=True,
-                                       this parameter is always sent to the API.
-                                       Defaults to False.
-            js_strategy (str|bool, optional): JavaScript execution strategy when using browser.
-                                       Options: True (stealth script & minimal JS),
-                                       False (no stealth injection, no JS rendering),
-                                       "DEFAULT" (follows our techniques).
-                                       Requires browser=True. When browser=True,
-                                       this parameter is always sent to the API.
-                                       Defaults to None.
+                                       Requires browser=True. Defaults to False.
+            operations (list, optional): List of browser operations to perform.
+                                       Example: [{"task": "waitForElement",
+                                                 "match": {"on": "xpath", "rule": "visible",
+                                                          "value": "//*[@id='element']"}}]
             timeout (int, optional): Request timeout in seconds. Defaults to 30.
-            **options: Additional proxy options like user_agent, cookies, etc.
+            max_retries (int, optional): Maximum number of retries on failure. Defaults to 3.
+            **options: Additional proxy options.
 
         Returns:
             ResponseData: The response object from the API containing:
@@ -123,36 +106,22 @@ class AskPablos:
             AuthenticationError: If authentication fails.
             ConfigurationError: If there is a configuration issue with the request.
         """
-        # Set default value for js_strategy if not provided
-        if js_strategy is None:
-            js_strategy = "DEFAULT"
-            js_strategy_explicitly_set = False
-        else:
-            js_strategy_explicitly_set = True
-
-        # Validate browser-specific options using the validator
+        # Validate browser-specific options
         self.validator.validate_browser_dependencies(
             browser=browser,
-            wait_for_load=wait_for_load,
-            screenshot=screenshot,
-            js_strategy=js_strategy
+            screenshot=screenshot
         )
-
-        # Additional validation for js_strategy when explicitly set
-        if not browser and js_strategy_explicitly_set:
-            raise ConfigurationError(
-                f"browser=True is required when using: js_strategy='{js_strategy}'. "
-            )
 
         # Build proxy options
         proxy_options = {
             "browser": browser,
-            "rotate_proxy": rotate_proxy,
-            "wait_for_load": wait_for_load,
             "screenshot": screenshot,
-            "js_strategy": js_strategy,
             **options
         }
+
+        # Add operations if provided
+        if operations is not None:
+            proxy_options["operations"] = operations
 
         try:
             return self.client.request(
@@ -160,7 +129,8 @@ class AskPablos:
                 headers=headers,
                 params=params,
                 options=proxy_options,
-                timeout=timeout
+                timeout=timeout,
+                max_retries=max_retries
             )
         except AskPablosError as e:
             logger.error(str(e))

@@ -9,9 +9,11 @@ the main ProxyClient class for API interactions.
 """
 
 import json
-import requests
 from base64 import b64decode
-from typing import Dict, Optional, Any
+from typing import Optional, Dict, Any
+from urllib.parse import urljoin
+
+import requests
 
 from .auth import AuthManager
 from .models import ResponseData, RequestOptions
@@ -37,14 +39,12 @@ class HTTPClient:
             api_url: Base URL for the API service
         """
         self.auth_manager = auth_manager
-        self.api_url = api_url
+        self.api_url = urljoin(api_url.rstrip('/'), '/api/proxy/bulk')
 
     def send_request(
             self,
             url: str,
             method: str = "GET",
-            headers: Optional[Dict[str, str]] = None,
-            params: Optional[Dict[str, str]] = None,
             options: Optional[RequestOptions] = None
     ) -> ResponseData:
         """
@@ -53,8 +53,6 @@ class HTTPClient:
         Args:
             url: Target URL to fetch through the proxy
             method: HTTP method (GET, POST, etc.)
-            headers: Custom headers for the target request
-            params: Query parameters for the target URL
             options: Request options and proxy settings
 
         Returns:
@@ -74,13 +72,11 @@ class HTTPClient:
         request_data = self._build_request_payload(
             url=url,
             method=method,
-            headers=headers,
-            params=params,
             options=options
         )
 
         # Convert to JSON
-        payload = json.dumps(request_data, separators=(',', ':'))
+        payload = json.dumps(request_data, separators=(',', ':'), sort_keys=True)
 
         # Build authentication headers
         auth_headers = self.auth_manager.build_auth_headers(payload)
@@ -100,7 +96,7 @@ class HTTPClient:
                 raise ResponseError(response.status_code, error_msg)
 
             # Parse and return the response
-            return self._parse_response(response)
+            return self._parse_response(response, url)
 
         except requests.Timeout as e:
             raise RequestTimeoutError("The request to the AskPablos server timed out. "
@@ -114,8 +110,6 @@ class HTTPClient:
     def _build_request_payload(
             url: str,
             method: str,
-            headers: Optional[Dict[str, str]],
-            params: Optional[Dict[str, str]],
             options: RequestOptions
     ) -> Dict[str, Any]:
         """
@@ -124,66 +118,72 @@ class HTTPClient:
         Args:
             url: Target URL
             method: HTTP method
-            headers: Custom headers
-            params: Query parameters
             options: Request options
 
         Returns:
             Dict[str, Any]: Complete request payload
         """
-        request_data = {
-            "url": url,
+        payload = {
+            "urls": [url],
             "method": method.upper(),
             "browser": options.browser,
-            "rotateProxy": options.rotate_proxy,
             "timeout": options.timeout,
-            "headers": headers if headers else None,
-            "params": params if params else None,
+            "maxRetries": options.max_retries
         }
 
-        # Add browser-specific options if browser is enabled
-        if options.browser:
-            request_data["waitForLoad"] = options.wait_for_load
-            request_data["screenshot"] = options.screenshot
-            request_data["jsStrategy"] = options.js_strategy
+        # Add optional fields if present
+        optional_fields = ['screenshot', 'operations']
 
-        # Add any additional options
-        request_data.update(options.additional_options)
+        for field in optional_fields:
+            if field in options.additional_options:
+                payload[field] = options.additional_options[field]
+            elif field == 'screenshot' and options.screenshot:
+                payload[field] = options.screenshot
 
-        return request_data
+        return payload
 
-    @staticmethod
-    def _parse_response(response: requests.Response) -> ResponseData:
+    def _parse_response(self, response: requests.Response, url: str) -> ResponseData:
         """
         Parse the API response into a ResponseData object.
 
         Args:
             response: Raw HTTP response from the API
+            url: The requested URL used as key in the response dict
 
         Returns:
             ResponseData: Parsed response object
         """
-        # Parse the API response
+        # responseBody is base64-encoded JSON keyed by requested URL
         api_response = response.json()
+        decoded_body = b64decode(api_response.get('responseBody')).decode()
+        url_keyed_data = json.loads(decoded_body)
+        url_data = url_keyed_data.get(url, {})
 
-        # Decode base64 content
-        response_content = b64decode(api_response.get('responseBody', ''))
+        content = url_data.get('content', '')
+        if isinstance(content, str):
+            content = content.encode()
 
         # Decode screenshot if present
         screenshot_content = None
-        if api_response.get('screenshot'):
-            screenshot_content = b64decode(api_response.get('screenshot'))
+        if url_data.get('screenshot'):
+            screenshot_content = b64decode(url_data.get('screenshot'))
 
         return ResponseData(
-            status_code=api_response.get('statusCode', response.status_code),
-            headers=api_response.get('headers', {}),
-            content=response_content,
-            url=api_response.get('url', response.url),
+            status_code=url_data.get('status_code', response.status_code),
+            headers={},
+            content=content,
+            url=url,
             elapsed_time=f"{response.elapsed.total_seconds():.2f}s",
-            encoding=api_response.get('encoding'),
+            encoding=self._extract_encoding(url_data.get('contentType')),
             json_data=api_response,
             screenshot=screenshot_content,
         )
+
+    @staticmethod
+    def _extract_encoding(content_type: Optional[str]) -> Optional[str]:
+        if content_type and 'charset=' in content_type:
+            return content_type.split('charset=')[-1]
+        return None
 
     @staticmethod
     def _extract_error_message(response: requests.Response) -> str:
@@ -236,7 +236,8 @@ class ProxyClient:
             headers: Optional[Dict[str, str]] = None,
             params: Optional[Dict[str, str]] = None,
             options: Optional[Dict[str, Any]] = None,
-            timeout: int = 30
+            timeout: int = 30,
+            max_retries: int = 3
     ) -> ResponseData:
         """
         Send a request through the AskPablos proxy.
@@ -253,6 +254,7 @@ class ProxyClient:
             options: Proxy-specific options for request processing. When browser=True
                     is included, all browser-specific options are sent to the API.
             timeout: Request timeout in seconds
+            max_retries: Maximum number of retries on failure
 
         Returns:
             ResponseData: Response object with all request results
@@ -263,14 +265,11 @@ class ProxyClient:
 
         request_options = RequestOptions(
             browser=options.get("browser", False),
-            rotate_proxy=options.get("rotate_proxy", False),
-            wait_for_load=options.get("wait_for_load", False),
             screenshot=options.get("screenshot", False),
-            js_strategy=options.get("js_strategy", "DEFAULT"),
             timeout=timeout,
+            max_retries=max_retries,
             **{k: v for k, v in options.items() if k not in [
-                "browser", "rotate_proxy", "wait_for_load",
-                "screenshot", "js_strategy"
+                "browser", "screenshot"
             ]}
         )
 
@@ -281,9 +280,7 @@ class ProxyClient:
             headers=headers,
             params=params,
             browser=request_options.browser,
-            wait_for_load=request_options.wait_for_load,
             screenshot=request_options.screenshot,
-            js_strategy=request_options.js_strategy,
             timeout=timeout
         )
 
@@ -291,7 +288,5 @@ class ProxyClient:
         return self.http_client.send_request(
             url=url,
             method=method,
-            headers=headers,
-            params=params,
             options=request_options
         )

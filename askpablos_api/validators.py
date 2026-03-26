@@ -24,23 +24,17 @@ class ParameterValidator:
     @staticmethod
     def validate_browser_dependencies(
             browser: bool,
-            wait_for_load: bool = False,
-            screenshot: bool = False,
-            js_strategy: str = "DEFAULT"
+            screenshot: bool = False
     ) -> None:
         """
         Validate that browser-dependent features are only used with browser=True.
 
         The following parameters require browser=True to function:
-        - wait_for_load: Requires browser automation to detect page load completion
         - screenshot: Requires browser automation to capture page screenshots
-        - js_strategy: Requires browser automation to execute JavaScript strategies
 
         Args:
             browser: Whether browser mode is enabled
-            wait_for_load: Whether page load waiting is requested
             screenshot: Whether screenshot capture is requested
-            js_strategy: JavaScript execution strategy
 
         Raises:
             ConfigurationError: If browser features are requested without browser=True
@@ -48,19 +42,9 @@ class ParameterValidator:
         if browser:
             return  # All features are valid when browser is enabled
 
-        # Collect invalid features that require browser=True
-        invalid_features = []
-
-        if wait_for_load:
-            invalid_features.append("wait_for_load=True")
-
         if screenshot:
-            invalid_features.append("screenshot=True")
-
-        if invalid_features:
-            features_str = ", ".join(invalid_features)
             raise ConfigurationError(
-                f"CONFIGURATION ERROR: browser=True is required when using: {features_str}."
+                f"CONFIGURATION ERROR: browser=True is required when using: screenshot=True."
             )
 
     @staticmethod
@@ -135,9 +119,7 @@ class ParameterValidator:
             headers: Optional[Dict[str, str]] = None,
             params: Optional[Dict[str, str]] = None,
             browser: bool = False,
-            wait_for_load: bool = False,
             screenshot: bool = False,
-            js_strategy: str = "DEFAULT",
             timeout: int = 30,
             **kwargs
     ) -> None:
@@ -150,9 +132,7 @@ class ParameterValidator:
             headers: Custom headers
             params: Query parameters
             browser: Browser mode flag
-            wait_for_load: Page load waiting flag
             screenshot: Screenshot capture flag
-            js_strategy: JavaScript strategy
             timeout: Request timeout
             **kwargs: Additional parameters
 
@@ -164,7 +144,5 @@ class ParameterValidator:
         cls.validate_timeout(timeout)
         cls.validate_browser_dependencies(
             browser=browser,
-            wait_for_load=wait_for_load,
-            screenshot=screenshot,
-            js_strategy=js_strategy
+            screenshot=screenshot
         )

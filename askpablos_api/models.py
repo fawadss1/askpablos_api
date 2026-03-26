@@ -106,11 +106,9 @@ class RequestOptions:
     def __init__(
         self,
         browser: bool = False,
-        rotate_proxy: bool = False,
-        wait_for_load: bool = False,
         screenshot: bool = False,
-        js_strategy: str = "DEFAULT",
         timeout: int = 30,
+        max_retries: int = 3,
         **additional_options
     ):
         """
@@ -118,19 +116,15 @@ class RequestOptions:
 
         Args:
             browser: Enable browser automation
-            rotate_proxy: Use proxy rotation
-            wait_for_load: Wait for page load completion
             screenshot: Take page screenshot
-            js_strategy: JavaScript execution strategy
             timeout: Request timeout in seconds
-            **additional_options: Additional proxy options
+            max_retries: Maximum number of retries on failure (default: 3)
+            **additional_options: Additional proxy options (e.g., operations)
         """
         self.browser = browser
-        self.rotate_proxy = rotate_proxy
-        self.wait_for_load = wait_for_load
         self.screenshot = screenshot
-        self.js_strategy = js_strategy
         self.timeout = timeout
+        self.max_retries = max_retries
         self.additional_options = additional_options
 
     def validate(self) -> None:
@@ -140,19 +134,8 @@ class RequestOptions:
         Raises:
             ValueError: If invalid parameter combinations are detected
         """
-        if not self.browser:
-            browser_features = []
-
-            if self.wait_for_load:
-                browser_features.append("wait_for_load=True")
-            if self.screenshot:
-                browser_features.append("screenshot=True")
-            if self.js_strategy != "DEFAULT":
-                browser_features.append(f"js_strategy={self.js_strategy}")
-
-            if browser_features:
-                features_str = ", ".join(browser_features)
-                raise ValueError(f"browser=True is required for these actions: {features_str}")
+        if not self.browser and self.screenshot:
+            raise ValueError("browser=True is required for screenshot=True")
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -163,19 +146,13 @@ class RequestOptions:
         """
         options = {
             "browser": self.browser,
-            "rotate_proxy": self.rotate_proxy,
             "timeout": self.timeout,
         }
 
-        if self.browser:
-            if self.wait_for_load:
-                options["wait_for_load"] = self.wait_for_load
-            if self.screenshot:
-                options["screenshot"] = self.screenshot
-            if self.js_strategy != "DEFAULT":
-                options["js_strategy"] = self.js_strategy
+        if self.browser and self.screenshot:
+            options["screenshot"] = self.screenshot
 
-        # Add any additional options
+        # Add any additional options (like operations)
         options.update(self.additional_options)
 
         return options
