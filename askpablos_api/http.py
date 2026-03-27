@@ -10,7 +10,7 @@ the main ProxyClient class for API interactions.
 
 import json
 from base64 import b64decode
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Union
 from urllib.parse import urljoin
 
 import requests
@@ -39,13 +39,14 @@ class HTTPClient:
             api_url: Base URL for the API service
         """
         self.auth_manager = auth_manager
-        self.api_url = urljoin(api_url.rstrip('/'), '/api/proxy/bulk')
+        self.api_url = urljoin(api_url.rstrip('/'), '/api/proxy')
 
     def send_request(
             self,
             url: str,
             method: str = "GET",
-            options: Optional[RequestOptions] = None
+            options: Optional[RequestOptions] = None,
+            is_bulk: bool = False
     ) -> ResponseData:
         """
         Send an HTTP request through the proxy service.
@@ -54,6 +55,7 @@ class HTTPClient:
             url: Target URL to fetch through the proxy
             method: HTTP method (GET, POST, etc.)
             options: Request options and proxy settings
+            is_bulk: Whether this is a bulk request
 
         Returns:
             ResponseData: Parsed response from the API
@@ -72,7 +74,8 @@ class HTTPClient:
         request_data = self._build_request_payload(
             url=url,
             method=method,
-            options=options
+            options=options,
+            is_bulk=is_bulk
         )
 
         # Convert to JSON
@@ -81,10 +84,12 @@ class HTTPClient:
         # Build authentication headers
         auth_headers = self.auth_manager.build_auth_headers(payload)
 
+        api_url = self.api_url + '/bulk' if is_bulk else self.api_url
+
         try:
             # Send the request
             response = requests.post(
-                self.api_url,
+                api_url,
                 data=payload,
                 headers=auth_headers,
                 timeout=options.timeout
@@ -96,7 +101,7 @@ class HTTPClient:
                 raise ResponseError(response.status_code, error_msg)
 
             # Parse and return the response
-            return self._parse_response(response, url)
+            return self._parse_response(response, url, is_bulk=is_bulk)
 
         except requests.Timeout as e:
             raise RequestTimeoutError("The request to the AskPablos server timed out. "
@@ -108,23 +113,25 @@ class HTTPClient:
 
     @staticmethod
     def _build_request_payload(
-            url: str,
+            url,
             method: str,
-            options: RequestOptions
+            options: RequestOptions,
+            is_bulk: bool = False
     ) -> Dict[str, Any]:
         """
         Build the request payload for the API.
 
         Args:
-            url: Target URL
+            url: Target URL (str) or list of URLs when is_bulk=True
             method: HTTP method
             options: Request options
+            is_bulk: Whether to build a bulk request payload
 
         Returns:
             Dict[str, Any]: Complete request payload
         """
         payload = {
-            "urls": [url],
+            "urls" if is_bulk else "url": [url] if is_bulk else url,
             "method": method.upper(),
             "browser": options.browser,
             "timeout": options.timeout,
@@ -142,21 +149,34 @@ class HTTPClient:
 
         return payload
 
-    def _parse_response(self, response: requests.Response, url: str) -> ResponseData:
+    def _parse_response(self, response: requests.Response, url: str, is_bulk: bool) -> ResponseData:
         """
         Parse the API response into a ResponseData object.
 
         Args:
             response: Raw HTTP response from the API
             url: The requested URL used as key in the response dict
+            is_bulk: Indicates if the request was a bulk request
 
         Returns:
             ResponseData: Parsed response object
         """
         # responseBody is base64-encoded JSON keyed by requested URL
         api_response = response.json()
-        decoded_body = b64decode(api_response.get('responseBody')).decode()
-        url_keyed_data = json.loads(decoded_body)
+        decoded_body = b64decode(api_response.get('responseBody'))
+        if not is_bulk:
+            return ResponseData(
+                status_code=response.status_code,
+                headers=response.headers,
+                content=decoded_body,
+                url=url,
+                elapsed_time=f"{response.elapsed.total_seconds():.2f}s",
+                encoding=self._extract_encoding(response.headers.get('Content-Type')),
+                json_data=api_response,
+                screenshot=api_response.get('screenshots')
+            )
+
+        url_keyed_data = json.loads(decoded_body.decode())
         url_data = url_keyed_data.get(url, {})
 
         content = url_data.get('content', '')
@@ -237,7 +257,8 @@ class ProxyClient:
             params: Optional[Dict[str, str]] = None,
             options: Optional[Dict[str, Any]] = None,
             timeout: int = 30,
-            max_retries: int = 3
+            max_retries: int = 3,
+            is_bulk: bool = False
     ) -> ResponseData:
         """
         Send a request through the AskPablos proxy.
@@ -255,6 +276,7 @@ class ProxyClient:
                     is included, all browser-specific options are sent to the API.
             timeout: Request timeout in seconds
             max_retries: Maximum number of retries on failure
+            is_bulk: Whether this is a bulk request
 
         Returns:
             ResponseData: Response object with all request results
@@ -276,17 +298,16 @@ class ProxyClient:
         # Validate all parameters
         self.validator.validate_request_params(
             url=url,
-            method=method,
             headers=headers,
-            params=params,
             browser=request_options.browser,
             screenshot=request_options.screenshot,
-            timeout=timeout
+            timeout=timeout,
         )
 
         # Send the request
         return self.http_client.send_request(
             url=url,
             method=method,
-            options=request_options
+            options=request_options,
+            is_bulk=is_bulk
         )

@@ -8,7 +8,7 @@ for making GET requests through the AskPablos proxy service. The client handles
 authentication, error management, and request formatting automatically.
 """
 
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Union
 import logging
 
 from .http import ProxyClient
@@ -63,6 +63,7 @@ class AskPablos:
             operations: Optional[list] = None,
             timeout: int = 30,
             max_retries: int = 3,
+            is_bulk: bool = False,
             **options
     ) -> ResponseData:
         """
@@ -88,6 +89,7 @@ class AskPablos:
             timeout (int, optional): Request timeout in seconds. Defaults to 30.
             max_retries (int, optional): Maximum number of retries on failure. Defaults to 3.
             **options: Additional proxy options.
+            is_bulk (bool, optional): Whether the request is part of a bulk operation.
 
         Returns:
             ResponseData: The response object from the API containing:
@@ -130,7 +132,8 @@ class AskPablos:
                 params=params,
                 options=proxy_options,
                 timeout=timeout,
-                max_retries=max_retries
+                max_retries=max_retries,
+                is_bulk=is_bulk
             )
         except AskPablosError as e:
             logger.error(str(e))

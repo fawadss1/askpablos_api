@@ -8,7 +8,7 @@ and internal data objects. Keeping models separate improves maintainability
 and makes it easier to extend data structures.
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Mapping
 
 
 class ResponseData:
@@ -32,7 +32,7 @@ class ResponseData:
     def __init__(
         self,
         status_code: int,
-        headers: Dict[str, str],
+        headers: Mapping[str, str],
         content: bytes,
         url: str,
         elapsed_time: str,

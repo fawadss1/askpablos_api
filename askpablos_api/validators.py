@@ -115,26 +115,20 @@ class ParameterValidator:
     def validate_request_params(
             cls,
             url: str,
-            method: str = "GET",
             headers: Optional[Dict[str, str]] = None,
-            params: Optional[Dict[str, str]] = None,
             browser: bool = False,
             screenshot: bool = False,
             timeout: int = 30,
-            **kwargs
     ) -> None:
         """
         Validate all request parameters at once.
 
         Args:
             url: Target URL
-            method: HTTP method
             headers: Custom headers
-            params: Query parameters
             browser: Browser mode flag
             screenshot: Screenshot capture flag
             timeout: Request timeout
-            **kwargs: Additional parameters
 
         Raises:
             ValueError: If any parameter is invalid
